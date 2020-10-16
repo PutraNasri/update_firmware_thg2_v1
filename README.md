@@ -1,0 +1,1 @@
+# update_firmware_thg2_v1
