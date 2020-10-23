@@ -7,12 +7,13 @@ void(* service_reset) (void) = 0;
 #include <Thread.h>
 #include <Pinger.h>
 #include <ESP8266WiFi.h>
-#include "FirebaseESP8266.h"
 #include <NTPClient.h>
 #include <WiFiUdp.h>
 #include <DNSServer.h>
 #include <ESP8266WebServer.h>
 #include <ESP8266HTTPClient.h>
+#include <WiFiClient.h>
+#include <Arduino_JSON.h>
 #include <WiFiManager.h>
 #include "DHTesp.h"
 //DHTesp dht;
@@ -22,10 +23,10 @@ void(* service_reset) (void) = 0;
 #define DHTTYPE DHT22
 DHT dht(DHTPIN, DHTTYPE);
 ///////////////////////////////////
-#define FIREBASE_HOST "lab-12-05-2020.firebaseio.com"
-//#define FIREBASE_HOST "labodia-1affe.firebaseio.com"
-//#define FIREBASE_AUTH "x3Uszo07DuQwCHrSRYfWcxiXgfFBUiQdbmOwIusm"  
-#define FIREBASE_AUTH "SN7HVRNajTD03IyYX84CosUYUlUO5Qw5kgYKfKRS"
+String get_pemilik = "http://otoridashboard.id/get_pemilik";
+String get_adjustment_rh_temp = "http://otoridashboard.id/get_adjustment_rh_temp";
+String get_delay = "http://otoridashboard.id/get_delay";
+String post_data = "http://otoridashboard.id/nulis_data";
 /////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////bagian yang harus di sesuaikan////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -53,11 +54,6 @@ NTPClient timeClient(ntpUDP);
 String formattedDate;
 String dayStamp;
 String timeStamp;
-FirebaseData firebaseData1;
-FirebaseData firebaseData2;
-FirebaseData firebaseData3;
-FirebaseData firebaseData4;
-FirebaseJson json;
 
 extern "C"
 {
@@ -99,15 +95,28 @@ void setup() {
   digitalWrite(pin_led_no_ok,HIGH);
   digitalWrite(pin_led_ok,LOW);
   digitalWrite(pin_led_acpn,LOW);
-  Firebase.begin(FIREBASE_HOST,FIREBASE_AUTH);
+  
   timeClient.begin();
   timeClient.setTimeOffset(25200);
   
-  Firebase.getString(firebaseData1,"/IntroAPP/Device/"+id_device+"/delay");
-  Firebase.getString(firebaseData2,"/IntroAPP/Device/"+id_device+"/adjustment_rh_temp");
+  /////////////////////////////////////////////////////////////////////////
+  delay(1000);
+  String delay_server_firebase = httpPOSTRequest_delay();
+  JSONVar var_delay_firebase = JSON.parse(delay_server_firebase);
+  delay_server_firebase = var_delay_firebase["delay"];
+  Serial.println("delay firebase = "+delay_server_firebase);
+  
+  delay(1000);
+  String sts_adjustment_rh_temp_firebase = httpPOSTRequest_adjustment_rh_temp();
+  JSONVar var_adjustment_rh_temp_firebase =JSON.parse(sts_adjustment_rh_temp_firebase);
+  sts_adjustment_rh_temp_firebase = var_adjustment_rh_temp_firebase["adjustment_rh_temp"];
+  Serial.println("adjustment firebase = "+sts_adjustment_rh_temp_firebase);
 
-  sts_adjustment_rh_temp = firebaseData2.stringData();
+  delay_server = delay_server_firebase; 
+  Serial.println(delay_server);
+  sts_adjustment_rh_temp = sts_adjustment_rh_temp_firebase;
   Serial.println(sts_adjustment_rh_temp);
+  ////////////////////////////////////////////////////////////////////////
   
   char *sts_adjustment_rh_tempp = strdup(sts_adjustment_rh_temp.c_str());
   char * rh = strtok(sts_adjustment_rh_tempp,"@");
@@ -116,10 +125,8 @@ void setup() {
   rh_call=atoi(rh);
   temp_call=atoi(temp);
   
-  delay_server=firebaseData1.stringData();
-  Serial.println(delay_server);
   
-  if (firebaseData1.stringData() != ""){
+  if (delay_server != ""){
     sts_server = "1";
   }
   
@@ -138,46 +145,60 @@ void setup() {
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void service(){
+  
   if(WiFi.status() == WL_CONNECTED){
 
-    if(Firebase.getString(firebaseData3, "/IntroAPP/Device/"+id_device+"/pemilik")){
+    if(pinger.Ping("otoridashboard.id") == false){
+      Serial.println("Error during ping command service.");
+      sts_server = "0";
+      //lakukan cek ping jika ada lanjut get api jika tidak, simpan data to sd card\
       
-      if(firebaseData3.stringData() != "no_id_user" && firebaseData3.stringData() != "lock"){
-        Serial.println(firebaseData3.stringData());
-        sts_server = "1";
-
+    }else{
+      Serial.println("connected.");
+      String pemilik = httpPOSTRequest_pemilik();
+      JSONVar var_pemilik = JSON.parse(pemilik);
+      pemilik = var_pemilik["pemilik"];
+      Serial.println(pemilik);
+      
+      if(pemilik != ""){
+        
+        if(pemilik != "no_id_user" && pemilik != "lock"){
+          sts_server = "1";
+         
           float h = dht.readHumidity();
           float t = dht.readTemperature();
-          
-        while(!timeClient.update()) {
-          timeClient.forceUpdate();
+          while(!timeClient.update()) {
+            timeClient.forceUpdate();
           }
-        formattedDate = timeClient.getFormattedDate();
-        int splitT = formattedDate.indexOf("T");
-        dayStamp = formattedDate.substring(0, splitT);
-        timeStamp = formattedDate.substring(splitT+1, formattedDate.length()-1);
-        String data = String(t+temp_call)+"@"+String(h+rh_call)+"@"+String(dayStamp)+"@"+String(timeStamp);
-        Firebase.pushString(firebaseData4,"/IntroAPP/Device/"+id_device+"/data",data);
-        Serial.println(data);
-      }
-      else if(firebaseData3.stringData() == "no_id_user"){
-        sts_server = "0";
-        Serial.println("no_id_user");
-      }
-      else if(firebaseData3.stringData() == "lock"){
-        sts_server = "0";
-        Serial.println("device lock");
-      }
-      else{
-        sts_server = "0"; 
-        Serial.println("error lain");
-      }
+          formattedDate = timeClient.getFormattedDate();
+          int splitT = formattedDate.indexOf("T");
+          dayStamp = formattedDate.substring(0, splitT);
+          timeStamp = formattedDate.substring(splitT+1, formattedDate.length()-1);
+          String data = String(t+temp_call)+"@"+String(h+rh_call)+"@"+String(dayStamp)+"@"+String(timeStamp);
+          httpPOSTRequest_post_data(data);
+        }else if(pemilik=="no_id_user"){
+          sts_server = "0";
+          Serial.println("no_id_user");
+        }else if(pemilik=="lock"){
+          sts_server = "0";
+          Serial.println("device lock");
+        }else{
+          sts_server = "0"; 
+          Serial.println("error lain");
+        }
+        
+      }else{
+      Serial.println("data pemilik firebase kosong");
+      }  
     }
-  }
-  else if(WiFi.status() != WL_CONNECTED){
+    yield();
+  
+  }else{
+    Serial.println("wifi not connected");
     sts_server = "0"; 
     service_reset();
   }
+  yield();
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void acpn_mode(){
@@ -191,6 +212,7 @@ void acpn_mode(){
       wifiManager.autoConnect(ssid, password);
       wifiManager.setBreakAfterConfig(true);
   }
+  yield();
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void led_conf(){
@@ -204,40 +226,65 @@ void led_conf(){
     digitalWrite(pin_led_ok,HIGH);
     digitalWrite(pin_led_acpn,LOW);
   }
+  yield();
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void service_control(){
 
   if(WiFi.status() == WL_CONNECTED){
-    
-    if(Firebase.getString(firebaseData1,"/IntroAPP/Device/"+id_device+"/delay")){
-      
-      Firebase.getString(firebaseData1,"/IntroAPP/Device/"+id_device+"/delay");
-      Firebase.getString(firebaseData2,"/IntroAPP/Device/"+id_device+"/adjustment_rh_temp");
 
-      if (delay_server != firebaseData1.stringData()){
-        Serial.println("reset by delay");
-        service_reset();
-      }
-      else if (sts_adjustment_rh_temp != firebaseData2.stringData()){
-        Serial.println("reset by adjust");
-        service_reset();
-      }
-    }
-    else{
-      Serial.println("error ping");
+    //lakukan cek ping jika ada lanjut get api jika tidak pass
+    //get api apabila rspon code selain 200 pass
+    delay(1000);
+    if(pinger.Ping("otoridashboard.id") == false){
+      Serial.println("Error during ping command service_control.");
       sts_server = "0"; 
-    }
-  }
-  else{
+    }else{
+      sts_server = "0"; 
+      Serial.println("cek service control");
+      
+      String delay_server_control = httpPOSTRequest_delay();
+      JSONVar var_delay_control = JSON.parse(delay_server_control);
+      delay_server_control = var_delay_control["delay"];
+//      Serial.println("delay control = "+delay_server);
+      delay(1000);
+      
+      String sts_adjustment_rh_temp_control = httpPOSTRequest_adjustment_rh_temp();
+      JSONVar var_adjustment_rh_temp_control =JSON.parse(sts_adjustment_rh_temp_control);
+      sts_adjustment_rh_temp_control = var_adjustment_rh_temp_control["adjustment_rh_temp"];
+//      Serial.println("adjustment control = "+sts_adjustment_rh_temp_control);
+      delay(1000);
+
+
+
+      if(delay_server_control !="" && sts_adjustment_rh_temp_control !=""){
+          if (delay_server != delay_server_control){
+            Serial.println("reset by delay");
+            service_reset();
+          }else if(sts_adjustment_rh_temp != sts_adjustment_rh_temp_control){
+            Serial.println("reset by adjust");
+            service_reset();
+          }else{
+            Serial.println("passs");
+          }
+      }else{
+        Serial.println("passss");
+      }
+      
+    }  
+    yield();
+
+  }else{
     Serial.println("error wifi");
     service_reset();
   }
+
+  yield();
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void service_timeout(){
   if(WiFi.status() == WL_CONNECTED){
-    if(pinger.Ping("google.com") == false){
+    if(pinger.Ping("otoridashboard.com") == false){
       Serial.println("Error during ping command.");
       sts_server = "0"; 
     }
@@ -248,6 +295,93 @@ void service_timeout(){
   else{
      service_reset();
   }
+}
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+String httpPOSTRequest_pemilik(){
+  HTTPClient http;
+  http.begin(get_pemilik);
+  http.addHeader("Content-Type", "application/json");
+  int body = http.POST("{\n\t\"id\":\"" + id_device + "\"\n}");
+  String payload = http.getString();
+//  Serial.print("HTTP Response code pemilik: ");
+//  Serial.println(body);
+//  Serial.print("HTTP Response data pemilik: ");
+//  Serial.println(payload);
+  http.end();
+
+  if (body==200){
+    return payload;
+  }
+  else{
+    return String(body);
+  }
+}
+///////////////////////////////////////////////////////////////////////////////////////////////////
+String httpPOSTRequest_delay(){
+  HTTPClient http;
+  http.begin(get_delay);
+  http.addHeader("Content-Type", "application/json");
+  int body = http.POST("{\n\t\"id\":\"" + id_device + "\"\n}");
+  String payload = http.getString();
+//  Serial.print("HTTP Response code delay: ");
+//  Serial.println(body);
+//  Serial.print("HTTP Response data delay: ");
+//  Serial.println(payload);
+  http.end();
+
+  if (body==200){
+    return payload;
+  }
+  else{
+    return String(body);
+  }
+}
+///////////////////////////////////////////////////////////////////////////////////////////////////
+String httpPOSTRequest_adjustment_rh_temp(){
+  HTTPClient http;
+  http.begin(get_adjustment_rh_temp);
+  http.addHeader("Content-Type", "application/json");
+  int body = http.POST("{\n\t\"id\":\"" + id_device + "\"\n}");
+  String payload = http.getString();
+//  Serial.print("HTTP Response code adjustment: ");
+//  Serial.println(body);
+//  Serial.print("HTTP Response data adjustment: ");
+//  Serial.println(payload);
+  http.end();
+
+  if (body==200){
+    return payload;
+  }
+  else{
+    return String(body);
+  }
+  
+//  return payload;
+ 
+}
+///////////////////////////////////////////////////////////////////////////////////////////////////
+void httpPOSTRequest_post_data(String data){
+  HTTPClient http;
+  http.begin(post_data);
+  http.addHeader("Content-Type", "application/json");
+//  String params = "{\n\t\"id\":\""+id_device+"\",\n\t\"data\":\""+data+"\"\n}";
+
+  String params = "{\"id\":\""+id_device+"\",\"data\":\""+String(data)+"\"}";
+                  
+//  String params = "{\"id\":\""+id_device+"\",\"data\":\""+data+"\"}";
+  Serial.println(params);
+  int body = http.POST(params);
+  String payload = http.getString();
+  Serial.print("HTTP Response code post data: ");
+  Serial.println(body);
+  Serial.print("HTTP Response data post data: ");
+  Serial.println(payload);
+  http.end();
+  
+  yield();
+ 
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 void loop() {

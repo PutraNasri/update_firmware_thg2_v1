@@ -239,19 +239,19 @@ void service(){
 
       if(pemilik != ""){
         if(pemilik != "no_id_user" && pemilik != "lock"){
-        sts_server = "1";
-        cek_data_sdcard_and_send_to_firebase();
-        float h = dht.readHumidity();
-        float t = dht.readTemperature();
-        while(!timeClient.update()) {
-          timeClient.forceUpdate();
-        }
-        formattedDate = timeClient.getFormattedDate();
-        int splitT = formattedDate.indexOf("T");
-        dayStamp = formattedDate.substring(0, splitT);
-        timeStamp = formattedDate.substring(splitT+1, formattedDate.length()-1);
-        String data = String(t+temp_call)+"@"+String(h+rh_call)+"@"+String(dayStamp)+"@"+String(timeStamp);
-        httpPOSTRequest_post_data(data);  
+          sts_server = "1";
+          cek_data_sdcard_and_send_to_firebase();
+          float h = dht.readHumidity();
+          float t = dht.readTemperature();
+          while(!timeClient.update()) {
+            timeClient.forceUpdate();
+          }
+          formattedDate = timeClient.getFormattedDate();
+          int splitT = formattedDate.indexOf("T");
+          dayStamp = formattedDate.substring(0, splitT);
+          timeStamp = formattedDate.substring(splitT+1, formattedDate.length()-1);
+          String data = String(t+temp_call)+"@"+String(h+rh_call)+"@"+String(dayStamp)+"@"+String(timeStamp);
+          httpPOSTRequest_post_data(data);  
         }else if(pemilik=="no_id_user"){
           sts_server = "0";
           Serial.println("no_id_user");
@@ -265,7 +265,7 @@ void service(){
            
       }else{
         Serial.println("data pemilik firebase kosong");
-        tulis_sd_card(); 
+//        tulis_sd_card(); 
       }  
     }
     yield();
@@ -274,11 +274,9 @@ void service(){
   
 //  ///////////////////////wifi can't connect//////////////////////////////////////////
   else {
-    
-    sts_server = "0"; 
-    
-    tulis_sd_card(); //tulis di sdcard
-    
+    Serial.println("wifi not connected");
+    sts_server = "0";  
+//    tulis_sd_card(); //tulis di sdcard   
   }
 
   yield();
@@ -517,6 +515,19 @@ void httpPOSTRequest_post_data(String data){
 void tulis_sd_card(){
   // open the file. note that only one file can be open at a time,
   // so you have to close this one before opening another.
+
+  float h = dht.readHumidity();
+  float t = dht.readTemperature();
+  while(!timeClient.update()) {
+    timeClient.forceUpdate();
+  }
+  formattedDate = timeClient.getFormattedDate();
+  int splitT = formattedDate.indexOf("T");
+  dayStamp = formattedDate.substring(0, splitT);
+  timeStamp = formattedDate.substring(splitT+1, formattedDate.length()-1);
+  String data = String(t+temp_call)+"@"+String(h+rh_call)+"@"+String(dayStamp)+"@"+String(timeStamp);
+  
+  //////////////////////////////////////////////////////////////////////////
   Serial.println("menulis sdcard");
   myFile = SD.open("test.txt", FILE_WRITE);
 
@@ -524,17 +535,17 @@ void tulis_sd_card(){
   if (myFile) {
     Serial.print("Writing to test.txt...");
     ///////////////////////////////////////////////////////////////////////////
-    float h = dht.readHumidity();
-    float t = dht.readTemperature();
-    while(!timeClient.update()) {
-      timeClient.forceUpdate();
-    }
-    formattedDate = timeClient.getFormattedDate();
-    int splitT = formattedDate.indexOf("T");
-    dayStamp = formattedDate.substring(0, splitT);
-    timeStamp = formattedDate.substring(splitT+1, formattedDate.length()-1);
-    String data = String(t+temp_call)+"@"+String(h+rh_call)+"@"+String(dayStamp)+"@"+String(timeStamp);
-    //////////////////////////////////////////////////////////////////////////
+//    float h = dht.readHumidity();
+//    float t = dht.readTemperature();
+//    while(!timeClient.update()) {
+//      timeClient.forceUpdate();
+//    }
+//    formattedDate = timeClient.getFormattedDate();
+//    int splitT = formattedDate.indexOf("T");
+//    dayStamp = formattedDate.substring(0, splitT);
+//    timeStamp = formattedDate.substring(splitT+1, formattedDate.length()-1);
+//    String data = String(t+temp_call)+"@"+String(h+rh_call)+"@"+String(dayStamp)+"@"+String(timeStamp);
+//    //////////////////////////////////////////////////////////////////////////
     myFile.println(data);
     // close the file:
     myFile.close();
@@ -575,6 +586,17 @@ void cek_data_sdcard_and_send_to_firebase(){
 ////////////////////////////////////////////////////////////////////////////////////////////////
 void update_firmware(){
   Serial.println("Download and flash new firmware.....");
+  
+  u8g2.clearBuffer();          // clear the internal memory
+  u8g2.setFont(u8g2_font_logisoso20_tr);
+  u8g2.setCursor(2,30);
+  u8g2.print("update..");
+  u8g2.setCursor(2,62);
+  u8g2.print("firmware");
+  u8g2.sendBuffer(); 
+
+  delay(1000);
+ 
   WiFiClient client;
   ESPhttpUpdate.setLedPin(LED_BUILTIN, LOW);
   t_httpUpdate_return ret = ESPhttpUpdate.update(URL_update,"",Fingerprint);
@@ -594,13 +616,14 @@ void update_firmware(){
       Serial.println("HTTP_UPDATE_OK");
       break;
   }
+  yield();
 }
 
 String get_version_firmware(){
   HTTPClient http;
   http.begin(get_versionfirmware);
   http.addHeader("Content-Type", "application/json");
-  int body = http.POST("{\n\t\"device_id\":\"" + id_device + "\"\n}");
+  int body = http.POST("{\n\t\"id\":\"" + id_device + "\"\n}");
   String payload = http.getString();
 //  Serial.print("HTTP Response code delay: ");
 //  Serial.println(body);
