@@ -30,8 +30,9 @@ String post_data = "http://otoridashboard.id/nulis_data";
 /////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////bagian yang harus di sesuaikan////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////
-String id_device      = "ENC54895";
-const char* ssid      = "ENC54895";
+String id_device      = "LDS56839";
+const char* ssid      = "LDS56839";
+String version_firmware = "F1";
 /////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -65,10 +66,11 @@ Thread Thread1 = Thread();
 Thread Thread2 = Thread();
 Thread Thread3 = Thread();
 Thread Thread4 = Thread();
-Thread Thread5 = Thread();
+//Thread Thread5 = Thread();
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void setup() {
   Serial.begin(115200);
+  Serial.println("ID_DEVICE = "+id_device);
   pinMode(btn_acpn,INPUT);
   pinMode(pin_sensor,INPUT);
   pinMode(pin_led_acpn,OUTPUT);
@@ -112,6 +114,13 @@ void setup() {
   sts_adjustment_rh_temp_firebase = var_adjustment_rh_temp_firebase["adjustment_rh_temp"];
   Serial.println("adjustment firebase = "+sts_adjustment_rh_temp_firebase);
 
+  if (delay_server_firebase ==""){
+    service_reset();
+  }else if(sts_adjustment_rh_temp_firebase==""){
+    service_reset();
+  }
+
+  
   delay_server = delay_server_firebase; 
   Serial.println(delay_server);
   sts_adjustment_rh_temp = sts_adjustment_rh_temp_firebase;
@@ -139,9 +148,9 @@ void setup() {
   Thread3.setInterval(500);
   Thread4.onRun(service_control);
   Thread4.setInterval(30000);
-  Thread5.onRun(service_timeout);
-  Thread5.setInterval(30000);
-  Serial.println("device ready");
+//  Thread5.onRun(service_timeout);
+//  Thread5.setInterval(30000);
+  Serial.println("device ready "+version_firmware);
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void service(){
@@ -232,15 +241,12 @@ void led_conf(){
 void service_control(){
 
   if(WiFi.status() == WL_CONNECTED){
-
-    //lakukan cek ping jika ada lanjut get api jika tidak pass
-    //get api apabila rspon code selain 200 pass
     delay(1000);
     if(pinger.Ping("otoridashboard.id") == false){
       Serial.println("Error during ping command service_control.");
       sts_server = "0"; 
     }else{
-      sts_server = "0"; 
+//      sts_server = "0"; 
       Serial.println("cek service control");
       
       String delay_server_control = httpPOSTRequest_delay();
@@ -265,10 +271,10 @@ void service_control(){
             Serial.println("reset by adjust");
             service_reset();
           }else{
-            Serial.println("passs");
+            Serial.println("passs data ada");
           }
       }else{
-        Serial.println("passss");
+        Serial.println("passss data kosong");
       }
       
     }  
@@ -282,20 +288,20 @@ void service_control(){
   yield();
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-void service_timeout(){
-  if(WiFi.status() == WL_CONNECTED){
-    if(pinger.Ping("otoridashboard.com") == false){
-      Serial.println("Error during ping command.");
-      sts_server = "0"; 
-    }
-    else{
-       Serial.println("connected.");
-    }
-  }
-  else{
-     service_reset();
-  }
-}
+//void service_timeout(){
+//  if(WiFi.status() == WL_CONNECTED){
+//    if(pinger.Ping("otoridashboard.com") == false){
+//      Serial.println("Error during ping command.");
+//      sts_server = "0"; 
+//    }
+//    else{
+//       Serial.println("connected.");
+//    }
+//  }
+//  else{
+//     service_reset();
+//  }
+//}
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -393,8 +399,8 @@ void loop() {
     Thread3.run();
   if(Thread4.shouldRun())
     Thread4.run();
-  if(Thread5.shouldRun())
-  Thread5.run();
+//  if(Thread5.shouldRun())
+//  Thread5.run();
   int x = 0;
   x = 1 + 2;
 }

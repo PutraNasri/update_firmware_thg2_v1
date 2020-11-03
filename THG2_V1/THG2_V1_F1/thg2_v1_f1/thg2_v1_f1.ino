@@ -36,11 +36,11 @@ DHT dht(DHTPIN, DHTTYPE);
 #endif
 U8G2_SSD1327_EA_W128128_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);  /* Uno: A4=SDA, A5=SCL, add "u8g2.setBusClock(400000);" into setup() for speedup if possible */
 //////////////////////////////////
-String get_pemilik = "http://otoridashboard.id/get_pemilik";
-String get_adjustment_rh_temp = "http://otoridashboard.id/get_adjustment_rh_temp";
-String get_delay = "http://otoridashboard.id/get_delay";
-String get_versionfirmware = "http://otoridashboard.id/versi";
-String post_data = "http://otoridashboard.id/nulis_data";
+String get_pemilik = "http://otoridashboard.id/thg2/get_pemilik";
+String get_adjustment_rh_temp = "http://otoridashboard.id/thg2/get_adjustment_rh_temp";
+String get_delay = "http://otoridashboard.id/thg2/get_delay";
+String get_versionfirmware = "http://otoridashboard.id/thg2/versi";
+String post_data = "http://otoridashboard.id/thg2/nulis_data";
 String Fingerprint = "null";
 #define URL_update "https://raw.githubusercontent.com/PutraNasri/update_firmware_thg2_v1/main/THG2_V1/ini.bin"
 HTTPClient http;
@@ -64,9 +64,11 @@ int detik_to_milidetik = 1000;
 const int pin_sensor = 0;
 
 const int btn_acpn = 16;
-//const int pin_led_acpn = 1;    
-//const int pin_led_no_ok = 2;   
-//const int pin_led_ok = 3;      
+
+const int pin_led_acpn = 1;    
+const int pin_led_no_ok = 2;   
+const int pin_led_ok = 3;  
+    
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP);
 File myFile;
@@ -95,9 +97,10 @@ void setup() {
   
   pinMode(btn_acpn,INPUT);
   pinMode(pin_sensor,INPUT);
-//  pinMode(pin_led_acpn,OUTPUT);
-//  pinMode(pin_led_no_ok,OUTPUT);
-//  pinMode(pin_led_ok,OUTPUT);
+  
+  pinMode(pin_led_acpn,OUTPUT);
+  pinMode(pin_led_no_ok,OUTPUT);
+  pinMode(pin_led_ok,OUTPUT);
   
   delay(1000);
   u8g2.begin();
@@ -184,6 +187,14 @@ void setup() {
   sts_adjustment_rh_temp_firebase = var_adjustment_rh_temp_firebase["adjustment_rh_temp"];
   Serial.println("adjustment firebase = "+sts_adjustment_rh_temp_firebase);
 
+
+  if (delay_server_firebase == ""){
+    delay_server_firebase = "2";
+  }
+  else if (sts_adjustment_rh_temp_firebase == ""){
+    sts_adjustment_rh_temp_firebase="0@0";
+  }
+
   delay_server = delay_server_firebase; 
   Serial.println(delay_server);
   sts_adjustment_rh_temp = sts_adjustment_rh_temp_firebase;
@@ -215,6 +226,9 @@ void setup() {
   Thread5.onRun(service_lcd);
   Thread5.setInterval(2000);
   Serial.println("device ready v1");
+
+ 
+  
 
  
 }
@@ -258,10 +272,11 @@ void service(){
         }else if(pemilik=="lock"){
           sts_server = "0";
           Serial.println("device lock");
-        }else{
-          sts_server = "0"; 
-          Serial.println("error lain");
         }
+//        else{
+//          sts_server = "0"; 
+//          Serial.println("error lain");
+//        }
            
       }else{
         Serial.println("data pemilik firebase kosong");
@@ -291,9 +306,11 @@ void acpn_mode(){
       u8g2.sendBuffer(); 
       WiFiManager wifiManager;
       Serial.println("ACPN MODE");
-//      digitalWrite(pin_led_no_ok,LOW);
-//      digitalWrite(pin_led_ok,LOW);
-//      digitalWrite(pin_led_acpn,HIGH);
+      
+      digitalWrite(pin_led_no_ok,LOW);
+      digitalWrite(pin_led_ok,LOW);
+      digitalWrite(pin_led_acpn,HIGH);
+      
       wifiManager.resetSettings();
       wifiManager.autoConnect(ssid, password);
       wifiManager.setBreakAfterConfig(true);   
@@ -302,16 +319,16 @@ void acpn_mode(){
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void led_conf(){
-//  if(sts_server == "0"){
-//    digitalWrite(pin_led_no_ok,HIGH);
-//    digitalWrite(pin_led_ok,LOW);
-//    digitalWrite(pin_led_acpn,LOW);
-//  }
-//  else if (sts_server == "1"){
-//    digitalWrite(pin_led_no_ok,LOW);
-//    digitalWrite(pin_led_ok,HIGH);
-//    digitalWrite(pin_led_acpn,LOW);
-//  }
+  if(sts_server == "0"){
+    digitalWrite(pin_led_no_ok,HIGH);
+    digitalWrite(pin_led_ok,LOW);
+    digitalWrite(pin_led_acpn,LOW);
+  }
+  else if (sts_server == "1"){
+    digitalWrite(pin_led_no_ok,LOW);
+    digitalWrite(pin_led_ok,HIGH);
+    digitalWrite(pin_led_acpn,LOW);
+  }
     yield();
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -326,7 +343,7 @@ void service_control(){
       Serial.println("Error during ping command service_control.");
       sts_server = "0"; 
     }else{
-      sts_server = "0"; 
+//      sts_server = "0"; 
       Serial.println("cek service control");
       String delay_server_control = httpPOSTRequest_delay();
       JSONVar var_delay_control = JSON.parse(delay_server_control);
@@ -344,13 +361,13 @@ void service_control(){
       String firmware_version_control = get_version_firmware();
       JSONVar var_firmware_version = JSON.parse(firmware_version_control);
       firmware_version_control = var_firmware_version["versi_firmware"];
-//      Serial.println("versi firmware control = "+firmware_version_control);
+      Serial.println("versi firmware control = "+firmware_version_control);
       delay(1000);
 
       
       String fingerprint_control = get_version_firmware();
       JSONVar var_fingerprint = JSON.parse(fingerprint_control);
-      fingerprint_control = var_fingerprint["finger_print"];
+      fingerprint_control = var_fingerprint["fingerprint"];
 //      Serial.println("versi fingerprint control = "+fingerprint_control);
       
       Fingerprint=fingerprint_control;
@@ -366,10 +383,11 @@ void service_control(){
             Serial.println("update firmware");
             update_firmware();
           }else{
-            Serial.println("passs");
+            Serial.println("passs data ada");
           }
       }else{
-        Serial.println("passss");
+        Serial.println("passss data kosong");
+        Serial.println("delay_server_control = "+delay_server_control+"sts_adjustment_rh_temp_control = "+sts_adjustment_rh_temp_control+"fingerprint_control = "+fingerprint_control);
       }
       
     }  
