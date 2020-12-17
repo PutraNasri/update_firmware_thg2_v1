@@ -65,9 +65,9 @@ const int pin_sensor = 0;
 
 const int btn_acpn = 16;
 
-const int pin_led_acpn = 1;    
-const int pin_led_no_ok = 2;   
-const int pin_led_ok = 3;  
+//const int pin_led_acpn = 1;    
+//const int pin_led_no_ok = 2;   
+//const int pin_led_ok = 3;  
     
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP);
@@ -98,9 +98,9 @@ void setup() {
   pinMode(btn_acpn,INPUT);
   pinMode(pin_sensor,INPUT);
   
-  pinMode(pin_led_acpn,OUTPUT);
-  pinMode(pin_led_no_ok,OUTPUT);
-  pinMode(pin_led_ok,OUTPUT);
+//  pinMode(pin_led_acpn,OUTPUT);
+//  pinMode(pin_led_no_ok,OUTPUT);
+//  pinMode(pin_led_ok,OUTPUT);
   
   delay(1000);
   u8g2.begin();
@@ -152,9 +152,9 @@ void setup() {
   WiFiManager wifiManager;
   wifiManager.setTimeout(60);
   wifiManager.setBreakAfterConfig(true);
-  digitalWrite(pin_led_no_ok,LOW);
-  digitalWrite(pin_led_ok,LOW);
-  digitalWrite(pin_led_acpn,HIGH);
+//  digitalWrite(pin_led_no_ok,LOW);
+//  digitalWrite(pin_led_ok,LOW);
+//  digitalWrite(pin_led_acpn,HIGH);
   if (!wifiManager.autoConnect(ssid, password)) {
     Serial.println("failed to connect, we should reset as see if it connects");
     delay(3000);
@@ -166,9 +166,10 @@ void setup() {
   Serial.println("WiFi connected.");
   Serial.println("IP address: ");
   Serial.println(WiFi.localIP());
-  digitalWrite(pin_led_no_ok,HIGH);
-  digitalWrite(pin_led_ok,LOW);
-  digitalWrite(pin_led_acpn,LOW);
+  
+//  digitalWrite(pin_led_no_ok,HIGH);
+//  digitalWrite(pin_led_ok,LOW);
+//  digitalWrite(pin_led_acpn,LOW);
   
   timeClient.begin();
   timeClient.setTimeOffset(25200);
@@ -304,9 +305,9 @@ void acpn_mode(){
       WiFiManager wifiManager;
       Serial.println("ACPN MODE");
       
-      digitalWrite(pin_led_no_ok,LOW);
-      digitalWrite(pin_led_ok,LOW);
-      digitalWrite(pin_led_acpn,HIGH);
+//      digitalWrite(pin_led_no_ok,LOW);
+//      digitalWrite(pin_led_ok,LOW);
+//      digitalWrite(pin_led_acpn,HIGH);
       
       wifiManager.resetSettings();
       wifiManager.autoConnect(ssid, password);
@@ -317,14 +318,14 @@ void acpn_mode(){
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void led_conf(){
   if(sts_server == "0"){
-    digitalWrite(pin_led_no_ok,HIGH);
-    digitalWrite(pin_led_ok,LOW);
-    digitalWrite(pin_led_acpn,LOW);
+//    digitalWrite(pin_led_no_ok,HIGH);
+//    digitalWrite(pin_led_ok,LOW);
+//    digitalWrite(pin_led_acpn,LOW);
   }
   else if (sts_server == "1"){
-    digitalWrite(pin_led_no_ok,LOW);
-    digitalWrite(pin_led_ok,HIGH);
-    digitalWrite(pin_led_acpn,LOW);
+//    digitalWrite(pin_led_no_ok,LOW);
+//    digitalWrite(pin_led_ok,HIGH);
+//    digitalWrite(pin_led_acpn,LOW);
   }
     yield();
 }
@@ -383,7 +384,7 @@ void service_control(){
           }
       }else{
         Serial.println("passss data kosong");
-        Serial.println("delay_server_control = "+delay_server_control+"sts_adjustment_rh_temp_control = "+sts_adjustment_rh_temp_control+"fingerprint_control = "+fingerprint_control);
+       // Serial.println("delay_server_control = "+delay_server_control+"sts_adjustment_rh_temp_control = "+sts_adjustment_rh_temp_control+"fingerprint_control = "+fingerprint_control);
       }
       
     }  

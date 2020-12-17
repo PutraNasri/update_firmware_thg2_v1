@@ -16,15 +16,18 @@ void(* service_reset) (void) = 0;
 #include <WiFiClient.h>
 #include <Arduino_JSON.h>
 #include <WiFiManager.h>
-#include "DHTesp.h"
+#include <OneWire.h>
+//#include "DHTesp.h"
 //#include <SPI.h>
 #include <SD.h>
 //DHTesp dht;
 ///////////////////////////////////
-#include "DHT.h"
-#define DHTPIN 0
-#define DHTTYPE DHT22
-DHT dht(DHTPIN, DHTTYPE);
+//#include "DHT.h"
+//#define DHTPIN 0
+//#define DHTTYPE DHT22
+//DHT dht(DHTPIN, DHTTYPE);
+int DS18S20_Pin = 0; //DS18S20 Signal pin on digital 2
+OneWire ds(DS18S20_Pin);
 ///////////////////////////////////
 #include <Arduino.h>
 #include <U8g2lib.h>
@@ -42,7 +45,7 @@ String get_delay = "http://otoridashboard.id/thg2/get_delay";
 String get_versionfirmware = "http://otoridashboard.id/thg2/versi";
 String post_data = "http://otoridashboard.id/thg2/nulis_data";
 String Fingerprint = "null";
-#define URL_update "https://raw.githubusercontent.com/PutraNasri/update_firmware_thg2_v1/main/THG2_V1/ini.bin"
+#define URL_update "https://raw.githubusercontent.com/PutraNasri/update_firmware_thg2_v1/main/THG2_V2/ini.bin"
 HTTPClient http;
 /////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////bagian yang harus di sesuaikan////////////////////////////////////
@@ -104,7 +107,7 @@ void setup() {
   
   delay(1000);
   u8g2.begin();
-  dht.begin();
+//  dht.begin();
   u8g2.clearBuffer();
   u8g2.clearBuffer();
   u8g2.clearBuffer();
@@ -252,8 +255,12 @@ void service(){
         if(pemilik != "no_id_user" && pemilik != "lock"){
           sts_server = "1";
           cek_data_sdcard_and_send_to_firebase();
-          float h = dht.readHumidity();
-          float t = dht.readTemperature();
+          
+//          float h = dht.readHumidity();
+//          float t = dht.readTemperature();
+          float temperature = getTemp();
+          float h = 00;
+          
           while(!timeClient.update()) {
             timeClient.forceUpdate();
           }
@@ -261,7 +268,7 @@ void service(){
           int splitT = formattedDate.indexOf("T");
           dayStamp = formattedDate.substring(0, splitT);
           timeStamp = formattedDate.substring(splitT+1, formattedDate.length()-1);
-          String data = String(t+temp_call)+"@"+String(h+rh_call)+"@"+String(dayStamp)+"@"+String(timeStamp);
+          String data = String(temperature+temp_call)+"@"+String(h+rh_call)+"@"+String(dayStamp)+"@"+String(timeStamp);
           httpPOSTRequest_post_data(data);  
         }else if(pemilik=="no_id_user"){
           sts_server = "0";
@@ -403,40 +410,35 @@ void service_control(){
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 void service_lcd(){
   
-  String tempp = String(dht.readTemperature()+temp_call);
+  String tempp = String(getTemp()+00);
   char * temp = strdup(tempp.c_str());
-  String humm =String(dht.readHumidity()+rh_call);
-  char * hum = strdup(humm.c_str());
-  u8g2.clearBuffer();          // clear the internal memory
-
-  //(yy,xx)
+  Serial.println(tempp);
   
-  u8g2.setFont(u8g2_font_logisoso42_tr); // choose a suitable font 42 pixel
-  u8g2.setCursor(2,43);
   char * depan_temp = strtok(temp,".");
   char * belakang_temp = strtok(NULL,".");
-  char * depan_hum = strtok(hum,".");
-  char * belakang_hum = strtok(NULL,".");
-  u8g2.print(String(depan_temp)+",");     // nilai depan koma temp
-  u8g2.setFont(u8g2_font_logisoso20_tr);
-  u8g2.setCursor(98,28);
-  u8g2.print(".");
-  u8g2.setCursor(105,43);
-  u8g2.print("C");
-  u8g2.setCursor(92,20);
-  u8g2.print(belakang_temp);   // nilai belakang koma  
-  u8g2.setFont(u8g2_font_logisoso42_tr);
-  u8g2.setCursor(2,95);
-  u8g2.print(String(depan_hum)+",");  
-  u8g2.setFont(u8g2_font_logisoso20_tr);
-  u8g2.setCursor(105,96);
-  u8g2.print("%");
-  u8g2.setCursor(92,74);
-  u8g2.print(belakang_hum);
-  u8g2.sendBuffer(); 
- 
-  yield();
   
+
+  u8g2.clearBuffer();          // clear the internal memory
+  u8g2.clearBuffer();
+  u8g2.setFont(u8g2_font_logisoso46_tn); // choose a suitable font 42 pixel
+  u8g2.setCursor(2,52);
+  
+  u8g2.print(String(depan_temp+00));
+  
+  u8g2.setFont(u8g2_font_logisoso26_tr); // choose a suitable font 42 pixel
+  u8g2.setCursor(85,25);
+  u8g2.print(","+String(belakang_temp));
+  
+  u8g2.setCursor(100,60);
+  u8g2.print("C");
+
+  u8g2.setFont(u8g2_font_logisoso20_tr);
+  u8g2.setCursor(20,97);
+  u8g2.print("otori.id");
+
+  u8g2.sendBuffer(); 
+
+  yield();
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////
 String httpPOSTRequest_pemilik(){
@@ -527,11 +529,9 @@ void httpPOSTRequest_post_data(String data){
 }
 ///////////////////////////////////////////////////////////////
 void tulis_sd_card(){
-  // open the file. note that only one file can be open at a time,
-  // so you have to close this one before opening another.
-
-  float h = dht.readHumidity();
-  float t = dht.readTemperature();
+  
+  float h = 00;
+  float temperature = getTemp();
   while(!timeClient.update()) {
     timeClient.forceUpdate();
   }
@@ -539,7 +539,7 @@ void tulis_sd_card(){
   int splitT = formattedDate.indexOf("T");
   dayStamp = formattedDate.substring(0, splitT);
   timeStamp = formattedDate.substring(splitT+1, formattedDate.length()-1);
-  String data = String(t+temp_call)+"@"+String(h+rh_call)+"@"+String(dayStamp)+"@"+String(timeStamp);
+  String data = String(temperature+temp_call)+"@"+String(h+rh_call)+"@"+String(dayStamp)+"@"+String(timeStamp);
   
   //////////////////////////////////////////////////////////////////////////
   Serial.println("menulis sdcard");
@@ -653,6 +653,55 @@ String get_version_firmware(){
   }
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+float getTemp(){
+  //returns the temperature from one DS18S20 in DEG Celsius
+
+  byte data[12];
+  byte addr[8];
+
+  if ( !ds.search(addr)) {
+      //no more sensors on chain, reset search
+      ds.reset_search();
+      return -1000;
+  }
+
+  if ( OneWire::crc8( addr, 7) != addr[7]) {
+      Serial.println("CRC is not valid!");
+      return -1000;
+  }
+
+  if ( addr[0] != 0x10 && addr[0] != 0x28) {
+      Serial.print("Device is not recognized");
+      return -1000;
+  }
+
+  ds.reset();
+  ds.select(addr);
+  ds.write(0x44,1); // start conversion, with parasite power on at the end
+
+  byte present = ds.reset();
+  ds.select(addr);
+  ds.write(0xBE); // Read Scratchpad
+
+
+  for (int i = 0; i < 9; i++) { // we need 9 bytes
+    data[i] = ds.read();
+  }
+
+  ds.reset_search();
+
+  byte MSB = data[1];
+  byte LSB = data[0];
+
+  float tempRead = ((MSB << 8) | LSB); //using two's compliment
+  float TemperatureSum = tempRead / 16;
+
+  return TemperatureSum;
+
+}
+////////////////////////////////////////////////////////////////////////////////////////////////
+
 void loop() {
   
   u8g2.clearBuffer();
