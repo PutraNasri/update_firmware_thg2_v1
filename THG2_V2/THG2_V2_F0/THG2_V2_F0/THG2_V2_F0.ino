@@ -32,8 +32,8 @@ U8G2_SSD1327_EA_W128128_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);  /* U
 /////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////bagian yang harus di sesuaikan////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////
-String id_device      = "UOA88561";
-const char* ssid      = "UOA88561";
+String id_device      = "YRZ57475";
+const char* ssid      = "YRZ57475";
 /////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -56,9 +56,9 @@ void setup() {
   pinMode(btn_acpn,INPUT);
 //  pinMode(pin_sensor,INPUT);
   
-  pinMode(pin_led_acpn,OUTPUT);
-  pinMode(pin_led_no_ok,OUTPUT);
-  pinMode(pin_led_ok,OUTPUT);
+//  pinMode(pin_led_acpn,OUTPUT);
+//  pinMode(pin_led_no_ok,OUTPUT);
+//  pinMode(pin_led_ok,OUTPUT);
 //  
   u8g2.begin();
 //  dht.begin();
@@ -66,9 +66,9 @@ void setup() {
   u8g2.clearBuffer();
   u8g2.clearBuffer();
   
-  digitalWrite(pin_led_no_ok,HIGH); //HIJAU
-  digitalWrite(pin_led_ok,HIGH);   //KUNING
-  digitalWrite(pin_led_acpn,HIGH); //MERAH
+//  digitalWrite(pin_led_no_ok,HIGH); //HIJAU
+//  digitalWrite(pin_led_ok,HIGH);   //KUNING
+//  digitalWrite(pin_led_acpn,HIGH); //MERAH
   delay(1000);
   while (!Serial) {
     ; // wait for serial port to connect. Needed for native USB port only

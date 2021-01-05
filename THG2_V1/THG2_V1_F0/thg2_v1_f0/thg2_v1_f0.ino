@@ -15,13 +15,28 @@ void(* service_reset) (void) = 0;
 #include <WiFiManager.h>
 #include <SD.h>
 #include <SPI.h>
-
+///////////////////////////////////
+#include "DHT.h"
+#define DHTPIN 0
+#define DHTTYPE DHT22
+DHT dht(DHTPIN, DHTTYPE);
+///////////////////////////////////
+#include <Arduino.h>
+#include <U8g2lib.h>
+#ifdef U8X8_HAVE_HW_SPI
+#include <SPI.h>
+#endif
+#ifdef U8X8_HAVE_HW_I2C
+#include <Wire.h>
+#endif
+U8G2_SSD1327_EA_W128128_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);  /* Uno: A4=SDA, A5=SCL, add "u8g2.setBusClock(400000);" into setup() for speedup if possible */
+//////////////////////////////////
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////bagian yang harus di sesuaikan////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////
-String id_device      = "UOA88561";
-const char* ssid      = "UOA88561";
+String id_device      = "DAD83839";
+const char* ssid      = "DAD83839";
 /////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -38,6 +53,12 @@ void setup() {
   // put your setup code here, to run once:
   Serial.begin(115200);
   delay(1000);
+  u8g2.begin();
+  dht.begin();
+  u8g2.clearBuffer();
+  u8g2.clearBuffer();
+  u8g2.clearBuffer();
+  
   while (!Serial) {
     ; // wait for serial port to connect. Needed for native USB port only
   }
@@ -165,9 +186,47 @@ String get_version_firmware(){
     return String(body);
   }
 }
+void service_lcd(){
+  String tempp = String(dht.readTemperature());
+  char * temp = strdup(tempp.c_str());
+  String humm =String(dht.readHumidity());
+  char * hum = strdup(humm.c_str());
+
+  Serial.println(tempp);
+  u8g2.clearBuffer();          // clear the internal memory
+
+  //(yy,xx)
+  
+  u8g2.setFont(u8g2_font_logisoso42_tr); // choose a suitable font 42 pixel
+  u8g2.setCursor(2,43);
+  char * depan_temp = strtok(temp,".");
+  char * belakang_temp = strtok(NULL,".");
+  char * depan_hum = strtok(hum,".");
+  char * belakang_hum = strtok(NULL,".");
+  u8g2.print(String(depan_temp)+",");     // nilai depan koma temp
+  u8g2.setFont(u8g2_font_logisoso20_tr);
+  u8g2.setCursor(98,28);
+  u8g2.print(".");
+  u8g2.setCursor(105,43);
+  u8g2.print("C");
+  u8g2.setCursor(92,20);
+  u8g2.print(belakang_temp);   // nilai belakang koma  
+  u8g2.setFont(u8g2_font_logisoso42_tr);
+  u8g2.setCursor(2,95);
+  u8g2.print(String(depan_hum)+",");  
+  u8g2.setFont(u8g2_font_logisoso20_tr);
+  u8g2.setCursor(105,96);
+  u8g2.print("%");
+  u8g2.setCursor(92,74);
+  u8g2.print(belakang_hum);
+  u8g2.sendBuffer(); 
+ 
+  yield();
+}
 
 void loop() {
   // put your main code here, to run repeatedly:
   cek_version_firmware();
-  delay(20000);
+  service_lcd();
+  delay(10000);
 }

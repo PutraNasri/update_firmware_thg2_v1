@@ -17,6 +17,11 @@ void(* service_reset) (void) = 0;
 #include <Arduino_JSON.h>
 #include <WiFiManager.h>
 #include <OneWire.h>
+#include <DallasTemperature.h>
+#define ONE_WIRE_BUS 0
+OneWire oneWire(ONE_WIRE_BUS);
+DallasTemperature sensorSuhu(&oneWire);
+float suhuSekarang;
 //#include "DHTesp.h"
 //#include <SPI.h>
 #include <SD.h>
@@ -26,8 +31,6 @@ void(* service_reset) (void) = 0;
 //#define DHTPIN 0
 //#define DHTTYPE DHT22
 //DHT dht(DHTPIN, DHTTYPE);
-int DS18S20_Pin = 0; //DS18S20 Signal pin on digital 2
-OneWire ds(DS18S20_Pin);
 ///////////////////////////////////
 #include <Arduino.h>
 #include <U8g2lib.h>
@@ -68,9 +71,9 @@ const int pin_sensor = 0;
 
 const int btn_acpn = 16;
 
-const int pin_led_acpn = 1;    
-const int pin_led_no_ok = 2;   
-const int pin_led_ok = 3;  
+//const int pin_led_acpn = 1;    
+//const int pin_led_no_ok = 2;   
+//const int pin_led_ok = 3;  
     
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP);
@@ -106,6 +109,8 @@ void setup() {
 //  pinMode(pin_led_ok,OUTPUT);
   
   delay(1000);
+
+  sensorSuhu.begin();
   u8g2.begin();
 //  dht.begin();
   u8g2.clearBuffer();
@@ -410,7 +415,8 @@ void service_control(){
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 void service_lcd(){
   
-  String tempp = String(getTemp()+00);
+  String tempp = String(getTemp()+temp_call);
+  Serial.println(tempp);
   char * temp = strdup(tempp.c_str());
   Serial.println(tempp);
   
@@ -531,7 +537,8 @@ void httpPOSTRequest_post_data(String data){
 void tulis_sd_card(){
   
   float h = 00;
-  float temperature = getTemp();
+  float temperature = getTemp()+00;
+  
   while(!timeClient.update()) {
     timeClient.forceUpdate();
   }
@@ -655,49 +662,9 @@ String get_version_firmware(){
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
 float getTemp(){
-  //returns the temperature from one DS18S20 in DEG Celsius
-
-  byte data[12];
-  byte addr[8];
-
-  if ( !ds.search(addr)) {
-      //no more sensors on chain, reset search
-      ds.reset_search();
-      return -1000;
-  }
-
-  if ( OneWire::crc8( addr, 7) != addr[7]) {
-      Serial.println("CRC is not valid!");
-      return -1000;
-  }
-
-  if ( addr[0] != 0x10 && addr[0] != 0x28) {
-      Serial.print("Device is not recognized");
-      return -1000;
-  }
-
-  ds.reset();
-  ds.select(addr);
-  ds.write(0x44,1); // start conversion, with parasite power on at the end
-
-  byte present = ds.reset();
-  ds.select(addr);
-  ds.write(0xBE); // Read Scratchpad
-
-
-  for (int i = 0; i < 9; i++) { // we need 9 bytes
-    data[i] = ds.read();
-  }
-
-  ds.reset_search();
-
-  byte MSB = data[1];
-  byte LSB = data[0];
-
-  float tempRead = ((MSB << 8) | LSB); //using two's compliment
-  float TemperatureSum = tempRead / 16;
-
-  return TemperatureSum;
+  sensorSuhu.requestTemperatures();
+  float suhu = sensorSuhu.getTempCByIndex(0);
+  return suhu;
 
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////
