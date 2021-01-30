@@ -1,96 +1,81 @@
 
-#include <SPI.h>              // include libraries
+#include <SPI.h>
 #include <LoRa.h>
-#include "LowPower.h"
+#include <Sleep_n0m1.h>
+#include "AESLib.h"
 
-const long frequency = 434E6;  // LoRa Frequency
+AESLib aesLib;
+Sleep sleep;
+unsigned long sleepTime = 50000;
+char cleartext[256];
+char ciphertext[512];
+// AES Encryption Key
+byte aes_key[] = { 0x15, 0x2B, 0x7E, 0x16, 0x28, 0xAE, 0xD2, 0xA6, 0xAB, 0xF7, 0x15, 0x88, 0x09, 0xCF, 0x4F, 0x3C };
+// General initialization vector (you must use your own IV's in production for full security!!!)
+byte aes_iv[N_BLOCK] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+// Generate IV (once)
 
-const int csPin = 10;          // LoRa radio chip select
-const int resetPin = 9;        // LoRa radio reset
-const int irqPin = 2;          // change for your board; must be a hardware interrupt pin
+
+String id_device = "xxxxxxxx";
+
+
 
 void setup() {
-  Serial.begin(9600);                   // initialize serial
+  Serial.begin(9600);
   while (!Serial);
 
-  LoRa.setPins(csPin, resetPin, irqPin);
+  Serial.println("LoRa Sender");
 
-  if (!LoRa.begin(frequency)) {
-    Serial.println("LoRa init failed. Check your connections.");
-    while (true);                       // if failed, do nothing
+  if (!LoRa.begin(434E6)) {
+    Serial.println("Starting LoRa failed!");
+    while (1);
   }
-
   Serial.println("LoRa init succeeded.");
   Serial.println();
   Serial.println("LoRa Simple Node");
   Serial.println("Only receive messages from gateways");
-  Serial.println("Tx: invertIQ disable");
-  Serial.println("Rx: invertIQ enable");
-  Serial.println();
-
-  LoRa.onReceive(onReceive);
-  LoRa.onTxDone(onTxDone);
-  LoRa_rxMode();
 }
 
 void loop() {
 
-    
-   
-    
-  if (runEvery(1000)) { // repeat every 1000 millis
+  
+  String data_no_encryp = id_device+"@1@2@3@4@5@6";
+  data_no_encryp.toCharArray(cleartext,data_no_encryp.length()+1);
+  byte enc_iv[N_BLOCK] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }; // iv_block gets written to, provide own fresh copy...
+  String data_encryp = encrypt(cleartext, enc_iv);
+  sprintf(ciphertext, "%s", data_encryp.c_str());
+  Serial.print("Ciphertext: ");
+  Serial.println(data_encryp);
 
-    String message = "HALO from LORA TWO (2)! ";
-    message += "I'm a Node! ";
-    message += millis();
+//  Serial.print("enc_iv[N_BLOCK] = ");
+//  Serial.println(enc_iv[N_BLOCK]);
+//
+//  Serial.print("aes_key[] = ");
+//  Serial.println(aes_key[]);
 
-    LoRa_sendMessage(message); // send a message
-
-    Serial.println("Send Message!");
-  }
+  
+  
+  delay(100);
+  
+  // send packet
+  Serial.println("Sending packet: ");
+  delay(100);
+  LoRa.beginPacket();
+  LoRa.print(data_no_encryp);
+  LoRa.endPacket();
+ // sleep nodes
+  Serial.println("Start Sleep");
+  digitalWrite(LED_BUILTIN,LOW);
+  delay(100);
+  sleep.pwrDownMode();
+  sleep.sleepDelay(sleepTime);
+  Serial.println("Bangun");
+  
 }
 
-void LoRa_rxMode(){
-  LoRa.enableInvertIQ();                // active invert I and Q signals
-  LoRa.receive();                       // set receive mode
-}
-
-void LoRa_txMode(){
-  LoRa.idle();                          // set standby mode
-  LoRa.disableInvertIQ();               // normal mode
-}
-
-void LoRa_sendMessage(String message) {
-  LoRa_txMode();                        // set tx mode
-  LoRa.beginPacket();                   // start packet
-  LoRa.print(message);                  // add payload
-  LoRa.endPacket(true);                 // finish packet and send it
-}
-
-void onReceive(int packetSize) {
-  String message = "";
-
-  while (LoRa.available()) {
-    message += (char)LoRa.read();
-  }
-
-  Serial.print("Node Receive: ");
-  Serial.println(message);
-}
-
-void onTxDone() {
-  Serial.println("TxDone");
-  LoRa_rxMode();
-}
-
-boolean runEvery(unsigned long interval)
-{
-  static unsigned long previousMillis = 0;
-  unsigned long currentMillis = millis();
-  if (currentMillis - previousMillis >= interval)
-  {
-    previousMillis = currentMillis;
-    return true;
-  }
-  return false;
+String encrypt(char * msg, byte iv[]) {  
+  int msgLen = strlen(msg);
+  char encrypted[2 * msgLen];
+  aesLib.encrypt64(msg, msgLen, encrypted, aes_key,sizeof(aes_key) ,iv);  
+  return String(encrypted);
 }

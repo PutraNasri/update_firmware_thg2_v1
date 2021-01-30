@@ -27,12 +27,20 @@ def get_data_gateway():
 
 	if response.status_code == 200 :
 		response.close()
+		potong = "id_user@1@2@3@4@5@6"
+		data_potong = potong.split('@')[1]
+		print("ini data potong = "+data_potong)
 		print("respon asli = "+str(data_json))
 		print("respon json lang = "+data_lang)
 		print("respon json lat = "+data_lat)
 		print("respon json name = "+data_name)
 		print("respon json owner = "+data_owner)
-		print("respon json nodes = "+str(data_node))
+		if data_node == "null":
+			print("data null")
+
+		elif data_node != "null":
+			print("respon json nodes = "+str(data_node))
+		
 		# simpan data nodes ke dalam txt
 		
 		#ambil data txt jadikan list

@@ -28,7 +28,7 @@ class LoRaRcvCont(LoRa):
 			status = self.get_modem_status()
 			sys.stdout.flush()         
 	def on_rx_done(self):
-		print ("\nReceived: ")
+		# print ("\nReceived: ")
 		self.clear_irq_flags(RxDone=1)
 		payload = self.read_payload(nocheck=True)
 		#print (bytes(payload).decode("utf-8",'ignore'))
@@ -36,14 +36,14 @@ class LoRaRcvCont(LoRa):
 		id_node = data.split('@')[0]
 		rssi_value = self.get_rssi_value()
 		status = self.get_modem_status()
-		# print (data+" rssi = "+str(rssi_value))
+		print ("\nReceived from node = "+data)
 
 		with open(path+'list_node.txt') as f:
 			list_txt = f.readlines()
 
 		txt=self.bacatxt()
 		if id_node in txt:
-			print("kirim data")
+			# print("kirim data")
 			self.push_data(id_node,data,rssi_value)
 		else:
 			print("pass")
@@ -82,12 +82,18 @@ class LoRaRcvCont(LoRa):
 			print("respon json owner = "+data_owner)
 			print("respon json nodes = "+str(data_node))
 			# simpan data nodes ke dalam txt
-			with open('list_node.txt','w') as f:
-				semua = ''
-				for i in data_node:
-					semua+=data_node[i]
-					semua+='\n'
-				f.write(semua)
+
+			if data_node == "null":
+				print("data null")
+
+			elif data_node != "null":
+				# print("respon json nodes = "+str(data_node))
+				with open('list_node.txt','w') as f:
+					semua = ''
+					for i in data_node:
+						semua+=data_node[i]
+						semua+='\n'
+					f.write(semua)
 			#ambil data txt jadikan list
 			#buat variabel data_a = 123 
 			#jika data_a tidak sama dengan data list yang di txt tadi maka print pass
@@ -99,26 +105,54 @@ class LoRaRcvCont(LoRa):
 			print("error")
 
 	def push_data(self,id_node,data,rssi_value):
-		print("send data to firebase")
+		
+		url_push_data = "http://api-lora.otoridashboard.id/push/node"
+		
 		now = datetime.now()
 		dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
-		data_push = str(id_node),"@",str(dt_string),"@",str(data),"@",str(rssi_value)
+		data1 = data.split('@')[1]
+		data2 = data.split('@')[2]
+		data3 = data.split('@')[3]
+		data4 = data.split('@')[4]
+		data5 = data.split('@')[5]
+		data6 = data.split('@')[6]
+		data_push = str(id_node)+"@"+str(dt_string)+"@"+str(data1)+"@"+str(data2)+"@"+str(data3)+"@"+str(data4)+"@"+str(data5)+"@"+str(data6)+"@"+str(rssi_value)
 
 		url_push_data = "http://api-lora.otoridashboard.id/push/node"
 		body = {
 			"id_device": str(id_node),
-            "data": "xxxxxxxx@23-03-2021 12:12@1@2@3@4@5@6@-122"
+            "data": str(data_push)
 		}
+
+		print("cek data log")
+		with open(path+'log.txt','r') as note:
+			notes = [n.strip() for n in note.readlines()]
+			if len(notes) == 0:
+				print("log kosong")
+				pass
+				# return None
+			else: 
+				print('log ada')
+				for i in notes:
+					param = {
+						'id_device': i.split('@')[0],
+						'data': i
+					}
+					self.push_data_log(url_push_data, param)
+
+		print("send data to firebase")
 		response = requests.request("POST", url_push_data, json = body)
 		data_json=response.json()
 
 		if response.status_code == 200 :
 			response.close()
-			print("respon json = "+str(response.status_code))
+			print("respon json berhasil push = "+str(response.status_code))
 
 		else:
-			print("error")
+			print("error push")
 			self.log_data(data_push)
+			response.close()
+
 			
 	def bacatxt(self):
 		list_txt = None
@@ -128,10 +162,15 @@ class LoRaRcvCont(LoRa):
 
 	def log_data(self,data_push):
 		print(data_push)
+		with open(path+'log.txt','a') as note:
+			note.write(data_push+'\n')
+
+	def push_data_log(self,url_push_data, param):
+		requests.post(url_push_data, json=param)
+		print('push data success')
 
 
 
-   
 lora = LoRaRcvCont(verbose=False)
 lora.set_mode(MODE.STDBY)
 #  Medium Range  Defaults after init are 434.0MHz, Bw = 125 kHz, Cr = 4/5, Sf = 128chips/symbol, CRC on 13 dBm
