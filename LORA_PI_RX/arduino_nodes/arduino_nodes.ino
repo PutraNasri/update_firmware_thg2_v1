@@ -6,7 +6,7 @@
 
 AESLib aesLib;
 Sleep sleep;
-unsigned long sleepTime = 50000;
+unsigned long sleepTime = 900000;
 char cleartext[256];
 char ciphertext[512];
 // AES Encryption Key
@@ -15,7 +15,9 @@ byte aes_key[] = { 0x15, 0x2B, 0x7E, 0x16, 0x28, 0xAE, 0xD2, 0xA6, 0xAB, 0xF7, 0
 byte aes_iv[N_BLOCK] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 // Generate IV (once)
 
-
+const int analogInPin = A1;
+int sensorValue = 0;
+int outputValue = 0; 
 String id_device = "xxxxxxxx";
 
 
@@ -38,22 +40,19 @@ void setup() {
 
 void loop() {
 
-  
-  String data_no_encryp = id_device+"@1@2@3@4@5@6";
+  sensorValue = analogRead(analogInPin);
+  outputValue = map(sensorValue, 0, 1023, 0, 255);
+  float milivolt = sensorValue * 5.0;
+  String data_no_encryp = id_device+"@"+milivolt+"@nan@nan@nan@nan@nan";
   data_no_encryp.toCharArray(cleartext,data_no_encryp.length()+1);
   byte enc_iv[N_BLOCK] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }; // iv_block gets written to, provide own fresh copy...
   String data_encryp = encrypt(cleartext, enc_iv);
   sprintf(ciphertext, "%s", data_encryp.c_str());
-  Serial.print("Ciphertext: ");
-  Serial.println(data_encryp);
-
-//  Serial.print("enc_iv[N_BLOCK] = ");
-//  Serial.println(enc_iv[N_BLOCK]);
-//
-//  Serial.print("aes_key[] = ");
-//  Serial.println(aes_key[]);
-
+//  Serial.print("Ciphertext: ");
+//  Serial.println(data_encryp);
   
+  
+  Serial.println(milivolt);
   
   delay(100);
   

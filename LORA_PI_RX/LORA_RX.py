@@ -12,6 +12,8 @@ import os
 global path
 path="/home/pi/LORA_PI_RX/"
 
+time.sleep(20)
+
 BOARD.setup()
 class LoRaRcvCont(LoRa):
 	def __init__(self, verbose=False):
