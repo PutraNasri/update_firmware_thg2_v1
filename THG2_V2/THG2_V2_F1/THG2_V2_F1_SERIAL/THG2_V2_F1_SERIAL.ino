@@ -232,7 +232,7 @@ void setup() {
   Thread4.setInterval(30000);
 //  Thread4.setInterval(50000);
   Thread5.onRun(service_lcd);
-  Thread5.setInterval(2000);
+  Thread5.setInterval(3000);
   Serial.println("device ready "+version_firmware);
 
  
@@ -418,7 +418,7 @@ void service_lcd(){
   String tempp = String(getTemp()+temp_call);
   Serial.println(tempp);
   char * temp = strdup(tempp.c_str());
-  Serial.println(tempp);
+  
   
   char * depan_temp = strtok(temp,".");
   char * belakang_temp = strtok(NULL,".");
@@ -513,7 +513,7 @@ String httpPOSTRequest_adjustment_rh_temp(){
  
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////
-void httpPOSTRequest_post_data(String data){
+String httpPOSTRequest_post_data(String data){
   HTTPClient http;
   http.begin(post_data);
   http.addHeader("Content-Type", "application/json");
@@ -525,10 +525,26 @@ void httpPOSTRequest_post_data(String data){
   Serial.println(params);
   int body = http.POST(params);
   String payload = http.getString();
-  Serial.print("HTTP Response code post data: ");
-  Serial.println(body);
-  Serial.print("HTTP Response data post data: ");
-  Serial.println(payload);
+//  Serial.print("HTTP Response code post data: ");
+//  Serial.println(body);
+//  Serial.print("HTTP Response data post data: ");
+//  Serial.println(payload);
+
+  if (body>0){
+    Serial.println(body);
+    if(body==HTTP_CODE_OK){
+      Serial.println(payload);
+    }
+    else{
+      tulis_sd_card(); 
+    }
+//    return payload;
+  }
+  else{
+    tulis_sd_card(); 
+//    return String(int(body));
+  }
+  
   http.end();
   yield();
  

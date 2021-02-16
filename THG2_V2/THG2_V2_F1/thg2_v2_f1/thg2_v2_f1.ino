@@ -122,24 +122,24 @@ void setup() {
     ; // wait for serial port to connect. Needed for native USB port only
   }
   
-  Serial.print("Initializing SD card...");
+//  Serial.print("Initializing SD card...");
 
   if (!SD.begin(15)) {
     Serial.println("initialization failed!");
     while (1);
   }
-  Serial.println("initialization done.");
+//  Serial.println("initialization done.");
   
   if(SD.exists("id_device.txt")){
     myFile = SD.open("id_device.txt");
     String id_device_sdcard;
     int count=1;
     if(myFile){
-      Serial.println("id_device.txt:");
+//      Serial.println("id_device.txt:");
       while(myFile.available()){
         id_device_sdcard = String(myFile.readStringUntil('\n'));
         id_device_sdcard.trim();
-        Serial.println("ini id device di sd card = "+id_device_sdcard);
+//        Serial.println("ini id device di sd card = "+id_device_sdcard);
         
         id_device = id_device_sdcard;
         ssid      = id_device.c_str();
@@ -149,14 +149,14 @@ void setup() {
       }
       myFile.close();
     }else{
-      Serial.println("error opening test.txt");
+//      Serial.println("error opening test.txt");
     }
   }else{
-    Serial.println("data id_device.txt di sdcard kosong");
+//    Serial.println("data id_device.txt di sdcard kosong");
   }
 //  SD.remove("test.txt");    
  ////////////////////////////////////////////////////////////////////////////////////////
-  Serial.print("Connecting to ");
+//  Serial.print("Connecting to ");
   WiFiManager wifiManager;
   wifiManager.setTimeout(60);
   wifiManager.setBreakAfterConfig(true);
@@ -164,7 +164,7 @@ void setup() {
   digitalWrite(pin_led_ok,LOW);
   digitalWrite(pin_led_acpn,HIGH);
   if (!wifiManager.autoConnect(ssid, password)) {
-    Serial.println("failed to connect, we should reset as see if it connects");
+//    Serial.println("failed to connect, we should reset as see if it connects");
     delay(3000);
     ESP.reset();
     delay(5000);
@@ -187,13 +187,13 @@ void setup() {
   String delay_server_firebase = httpPOSTRequest_delay();
   JSONVar var_delay_firebase = JSON.parse(delay_server_firebase);
   delay_server_firebase = var_delay_firebase["delay"];
-  Serial.println("delay firebase = "+delay_server_firebase);
+//  Serial.println("delay firebase = "+delay_server_firebase);
   
   delay(1000);
   String sts_adjustment_rh_temp_firebase = httpPOSTRequest_adjustment_rh_temp();
   JSONVar var_adjustment_rh_temp_firebase =JSON.parse(sts_adjustment_rh_temp_firebase);
   sts_adjustment_rh_temp_firebase = var_adjustment_rh_temp_firebase["adjustment_rh_temp"];
-  Serial.println("adjustment firebase = "+sts_adjustment_rh_temp_firebase);
+//  Serial.println("adjustment firebase = "+sts_adjustment_rh_temp_firebase);
 
 
   if (delay_server_firebase == ""){
@@ -204,9 +204,9 @@ void setup() {
   }
 
   delay_server = delay_server_firebase; 
-  Serial.println(delay_server);
+//  Serial.println(delay_server);
   sts_adjustment_rh_temp = sts_adjustment_rh_temp_firebase;
-  Serial.println(sts_adjustment_rh_temp);
+//  Serial.println(sts_adjustment_rh_temp);
   
   char *sts_adjustment_rh_tempp = strdup(sts_adjustment_rh_temp.c_str());
   char * rh = strtok(sts_adjustment_rh_tempp,"@");
@@ -233,7 +233,7 @@ void setup() {
 //  Thread4.setInterval(50000);
   Thread5.onRun(service_lcd);
   Thread5.setInterval(2000);
-  Serial.println("device ready "+version_firmware);
+//  Serial.println("device ready "+version_firmware);
 
  
 }
@@ -244,17 +244,17 @@ void setup() {
 void service(){
   if(WiFi.status() == WL_CONNECTED){  
     if(pinger.Ping("otoridashboard.id") == false){
-      Serial.println("Error during ping command service.");
+//      Serial.println("Error during ping command service.");
       sts_server = "0";
       tulis_sd_card(); 
       //lakukan cek ping jika ada lanjut get api jika tidak, simpan data to sd card\
       
     }else{
-      Serial.println("connected.");
+//      Serial.println("connected.");
       String pemilik = httpPOSTRequest_pemilik();
       JSONVar var_pemilik = JSON.parse(pemilik);
       pemilik = var_pemilik["pemilik"];
-      Serial.println(pemilik);
+//      Serial.println(pemilik);
 
       if(pemilik != ""){
         if(pemilik != "no_id_user" && pemilik != "lock"){
@@ -298,7 +298,7 @@ void service(){
   
 //  ///////////////////////wifi can't connect//////////////////////////////////////////
   else {
-    Serial.println("wifi not connected");
+//    Serial.println("wifi not connected");
     sts_server = "0";  
 //    tulis_sd_card(); //tulis di sdcard   
   }
@@ -314,7 +314,7 @@ void acpn_mode(){
       u8g2.print("REST");
       u8g2.sendBuffer(); 
       WiFiManager wifiManager;
-      Serial.println("ACPN MODE");
+//      Serial.println("ACPN MODE");
       
       digitalWrite(pin_led_no_ok,LOW);
       digitalWrite(pin_led_ok,LOW);
@@ -349,7 +349,7 @@ void service_control(){
     //get api apabila rspon code selain 200 pass
     delay(1000);
     if(pinger.Ping("otoridashboard.id") == false){
-      Serial.println("Error during ping command service_control.");
+//      Serial.println("Error during ping command service_control.");
       sts_server = "0"; 
     }else{
       Serial.println("cek service control");
@@ -382,27 +382,27 @@ void service_control(){
 
       if(delay_server_control !="" && sts_adjustment_rh_temp_control !="" && firmware_version_control !="" && fingerprint_control !=""){
           if (delay_server != delay_server_control){
-            Serial.println("reset by delay");
+//            Serial.println("reset by delay");
             service_reset();
           }else if(sts_adjustment_rh_temp != sts_adjustment_rh_temp_control){
-            Serial.println("reset by adjust");
+//            Serial.println("reset by adjust");
             service_reset();
           }else if(firmware_version_control != version_firmware){
-            Serial.println("update firmware");
+//            Serial.println("update firmware");
             update_firmware();
           }else{
-            Serial.println("passs data ada");
+//            Serial.println("passs data ada");
           }
       }else{
-        Serial.println("passss data kosong");
-        Serial.println("delay_server_control = "+delay_server_control+"sts_adjustment_rh_temp_control = "+sts_adjustment_rh_temp_control+"fingerprint_control = "+fingerprint_control);
+//        Serial.println("passss data kosong");
+//        Serial.println("delay_server_control = "+delay_server_control+"sts_adjustment_rh_temp_control = "+sts_adjustment_rh_temp_control+"fingerprint_control = "+fingerprint_control);
       }
       
     }  
     yield();
 
   }else if (WiFi.status() != WL_CONNECTED){
-    Serial.println("error wifi");
+//    Serial.println("error wifi");
   }
 
   yield();
@@ -417,7 +417,7 @@ void service_lcd(){
   
   String tempp = String(getTemp()+temp_call);
   char * temp = strdup(tempp.c_str());
-  Serial.println(tempp);
+//  Serial.println(tempp);
   
   char * depan_temp = strtok(temp,".");
   char * belakang_temp = strtok(NULL,".");
@@ -521,13 +521,13 @@ void httpPOSTRequest_post_data(String data){
   String params = "{\"id\":\""+id_device+"\",\"data\":\""+String(data)+"\"}";
                   
 //  String params = "{\"id\":\""+id_device+"\",\"data\":\""+data+"\"}";
-  Serial.println(params);
+//  Serial.println(params);
   int body = http.POST(params);
   String payload = http.getString();
-  Serial.print("HTTP Response code post data: ");
-  Serial.println(body);
-  Serial.print("HTTP Response data post data: ");
-  Serial.println(payload);
+//  Serial.print("HTTP Response code post data: ");
+//  Serial.println(body);
+//  Serial.print("HTTP Response data post data: ");
+//  Serial.println(payload);
   http.end();
   yield();
  
@@ -548,7 +548,7 @@ void tulis_sd_card(){
   String data = String(temperature+temp_call)+"@"+String(h+rh_call)+"@"+String(dayStamp)+"@"+String(timeStamp);
   
   //////////////////////////////////////////////////////////////////////////
-  Serial.println("menulis sdcard");
+//  Serial.println("menulis sdcard");
   myFile = SD.open("test.txt", FILE_WRITE);
 
   // if the file opened okay, write to it:
@@ -589,23 +589,23 @@ void cek_data_sdcard_and_send_to_firebase(){
         data = String(myFile.readStringUntil('\n'));
         data.trim();
         httpPOSTRequest_post_data(data);
-        Serial.println("ini datasd = "+data);
+//        Serial.println("ini datasd = "+data);
         delay(3000);      
       }
       myFile.close(); 
       SD.remove("test.txt");    
     }else{
-      Serial.println("error opening test.txt");
+//      Serial.println("error opening test.txt");
     }   
   }else{
-    Serial.println("data sd kosong");
+//    Serial.println("data sd kosong");
     //lanjut pass
   }
  
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////
 void update_firmware(){
-  Serial.println("Download and flash new firmware.....");
+//  Serial.println("Download and flash new firmware.....");
   
   u8g2.clearBuffer();          // clear the internal memory
   u8g2.setFont(u8g2_font_logisoso20_tr);

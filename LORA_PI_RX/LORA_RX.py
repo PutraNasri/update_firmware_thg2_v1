@@ -144,7 +144,7 @@ class LoRaRcvCont(LoRa):
 
 		print("send data to firebase")
 		response = requests.request("POST", url_push_data, json = body)
-		data_json=response.json()
+		# data_json=response.json()
 
 		if response.status_code == 200 :
 			response.close()

@@ -1,29 +1,29 @@
-
 #include <SPI.h>
 #include <LoRa.h>
 #include <Sleep_n0m1.h>
-#include "AESLib.h"
+#include <SDISerial.h>
+#include <string.h>
+#define DATA_ATMOS14 5
+SDISerial connection_ATMOS14(DATA_ATMOS14);
+char output_buffer[125]; // just for uart prints
+char tmp_buffer[4];
 
-AESLib aesLib;
+
 Sleep sleep;
 unsigned long sleepTime = 900000;
-char cleartext[256];
-char ciphertext[512];
-// AES Encryption Key
-byte aes_key[] = { 0x15, 0x2B, 0x7E, 0x16, 0x28, 0xAE, 0xD2, 0xA6, 0xAB, 0xF7, 0x15, 0x88, 0x09, 0xCF, 0x4F, 0x3C };
-// General initialization vector (you must use your own IV's in production for full security!!!)
-byte aes_iv[N_BLOCK] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-// Generate IV (once)
 
-const int analogInPin = A1;
-int sensorValue = 0;
-int outputValue = 0; 
+
+
 String id_device = "xxxxxxxx";
 
 
 
 void setup() {
+  connection_ATMOS14.begin();
   Serial.begin(9600);
+  char* resp = connection_ATMOS14.sdi_query("1CC!",1000);
+  delay(3000);//3 seconds should be more than enough
+
   while (!Serial);
 
   Serial.println("LoRa Sender");
@@ -39,20 +39,39 @@ void setup() {
 }
 
 void loop() {
+  char* resp = connection_ATMOS14.sdi_query("1D0!",1000);
+  sprintf(output_buffer,"%s",resp?resp:"No Response Recieved!!");
+  char *a = strtok(output_buffer,"+");
+  char *b = strtok(NULL,"+");
+  char *c = strtok(NULL,"+");
+  char *d = strtok(NULL,"+");
+  char *e = strtok(NULL,"+");
+  e[strlen(e)-4] ='\0';
+  String Vapor_pressure_in_kPa = String(b);
+  String Temperature = String(c);
+  String Relative_humidity= String(d);
+  String Atmospheric_Pressure_in_kPa = String(e);
+  
+  Serial.println("Vapor pressure in kPa = "+String(b));
+  Serial.println("Temperature = "+String(c));
+  Serial.println("Relative humidity = "+String(d));
+  Serial.println("Atmospheric Pressure in kPa = "+String(e));
+  Serial.println("");
 
-  sensorValue = analogRead(analogInPin);
-  outputValue = map(sensorValue, 0, 1023, 0, 255);
-  float milivolt = sensorValue * 5.0;
-  String data_no_encryp = id_device+"@"+milivolt+"@nan@nan@nan@nan@nan";
-  data_no_encryp.toCharArray(cleartext,data_no_encryp.length()+1);
-  byte enc_iv[N_BLOCK] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }; // iv_block gets written to, provide own fresh copy...
-  String data_encryp = encrypt(cleartext, enc_iv);
-  sprintf(ciphertext, "%s", data_encryp.c_str());
+  
+//  sensorValue = analogRead(analogInPin);
+//  outputValue = map(sensorValue, 0, 1023, 0, 255);
+//  float milivolt = sensorValue * 5.0;
+//  Serial.println(milivolt);
+  
+  String data_no_encryp = id_device+"@"+Vapor_pressure_in_kPa+"@"+Temperature+"@"+Relative_humidity+"@"+Atmospheric_Pressure_in_kPa+"@nan@nan";
+  
+  
 //  Serial.print("Ciphertext: ");
 //  Serial.println(data_encryp);
   
   
-  Serial.println(milivolt);
+  
   
   delay(100);
   
@@ -70,11 +89,4 @@ void loop() {
   sleep.sleepDelay(sleepTime);
   Serial.println("Bangun");
   
-}
-
-String encrypt(char * msg, byte iv[]) {  
-  int msgLen = strlen(msg);
-  char encrypted[2 * msgLen];
-  aesLib.encrypt64(msg, msgLen, encrypted, aes_key,sizeof(aes_key) ,iv);  
-  return String(encrypted);
 }
