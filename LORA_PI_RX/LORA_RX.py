@@ -62,7 +62,10 @@ class LoRaRcvCont(LoRa):
 				}
 		# response = requests.request("POST", url, json = body)
 		response = requests.post(url_get_gateway, json = body)
-		data_json=response.json()
+		try: data_json=response.json()
+		except: 
+			print('network error')
+			return None 
 
 		data_delay = data_json['delay']
 		data_lang = data_json['lang']
@@ -149,6 +152,8 @@ class LoRaRcvCont(LoRa):
 		if response.status_code == 200 :
 			response.close()
 			print("respon json berhasil push = "+str(response.status_code))
+			with open(path+'log.txt','w') as note:
+				note.write('')
 
 		else:
 			print("error push")

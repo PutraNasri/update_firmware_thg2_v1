@@ -21,7 +21,7 @@ String id_device = "xxxxxxxx";
 void setup() {
   connection_ATMOS14.begin();
   Serial.begin(9600);
-  char* resp = connection_ATMOS14.sdi_query("1CC!",1000);
+  char* resp = connection_ATMOS14.sdi_query("1C!",1000);
   delay(3000);//3 seconds should be more than enough
 
   while (!Serial);
@@ -39,6 +39,7 @@ void setup() {
 }
 
 void loop() {
+  
   char* resp = connection_ATMOS14.sdi_query("1D0!",1000);
   sprintf(output_buffer,"%s",resp?resp:"No Response Recieved!!");
   char *a = strtok(output_buffer,"+");
@@ -51,10 +52,12 @@ void loop() {
   String Temperature = String(c);
   String Relative_humidity= String(d);
   String Atmospheric_Pressure_in_kPa = String(e);
+
+  float humidity = Relative_humidity.toFloat()*100;
   
   Serial.println("Vapor pressure in kPa = "+String(b));
   Serial.println("Temperature = "+String(c));
-  Serial.println("Relative humidity = "+String(d));
+  Serial.println("humidity = "+String(humidity));
   Serial.println("Atmospheric Pressure in kPa = "+String(e));
   Serial.println("");
 
@@ -64,13 +67,14 @@ void loop() {
 //  float milivolt = sensorValue * 5.0;
 //  Serial.println(milivolt);
   
-  String data_no_encryp = id_device+"@"+Vapor_pressure_in_kPa+"@"+Temperature+"@"+Relative_humidity+"@"+Atmospheric_Pressure_in_kPa+"@nan@nan";
-  
+  String data_no_encryp = id_device+"@"+Vapor_pressure_in_kPa+"@"+Temperature+"@"+humidity+"@"+Atmospheric_Pressure_in_kPa+"@nan@nan";
+//  String data_no_encryp = id_device+"@1@nan@nan@nan@nan@nan";
   
 //  Serial.print("Ciphertext: ");
 //  Serial.println(data_encryp);
   
-  
+  Serial.println(data_no_encryp);
+
   
   
   delay(100);
