@@ -45,7 +45,7 @@ def get_data_mcb():
 		print("R3 = "+str(status_R3))
 		print("R4 = "+str(status_R4))
 
-
+		#pele pele pele
 	else:
 		print("error lain dengan respon code = "+str(status_code_get_data_mcb))
 		get_data_mcb()
