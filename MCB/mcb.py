@@ -29,7 +29,7 @@ def get_data_mcb():
 	# response = requests.request("POST", url, json = body)
 	response = requests.post(url, json = body)
 	status_code_get_data_mcb = response.status_code
-	
+
 
 	if status_code_get_data_mcb == 200:
 		print("respon code = "+str(status_code_get_data_mcb))
