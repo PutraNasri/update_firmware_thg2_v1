@@ -4,6 +4,7 @@ import time
 import json
 import requests
 import sys
+import time
 import os
 
 RELAIS_1_GPIO = 18 #or 15
@@ -17,7 +18,7 @@ GPIO.output(RELAIS_1_GPIO, GPIO.HIGH) # on
 time.sleep(3)
 GPIO.output(RELAIS_1_GPIO, GPIO.LOW) # out
 	
-id_device = "mcbnewtest"
+id_device = "mcbnew1"
 
 
 def get_data_mcb():
@@ -50,4 +51,7 @@ def get_data_mcb():
 		print("error lain dengan respon code = "+str(status_code_get_data_mcb))
 		get_data_mcb()
 
-get_data_mcb()
+while True:
+	get_data_mcb()
+	print(int(time.time()))
+	time.sleep(60)
