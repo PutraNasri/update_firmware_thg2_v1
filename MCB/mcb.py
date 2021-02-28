@@ -46,6 +46,10 @@ def get_data_mcb():
 		print("R3 = "+str(status_R3))
 		print("R4 = "+str(status_R4))
 
+		#if yang mana relay bernilai 1 lalu print
+		#if yang mana relay bernilai 0 lalu print
+		#if yang mana relay bernilai 2 lalu print
+
 		#pele pele pele
 	else:
 		print("error lain dengan respon code = "+str(status_code_get_data_mcb))
