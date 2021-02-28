@@ -7,30 +7,33 @@ import sys
 import time
 import os
 
-RELAIS_1_GPIO = 18 #or 15
+relay_1 = 15
+relay_2 = 18
+relay_3 = 23
+relay_4 = 24
 
 GPIO.setmode(GPIO.BCM) 
 GPIO.setwarnings(False)
+GPIO.setup(relay_1, GPIO.OUT) # GPIO Assign mode 1
+GPIO.setup(relay_2, GPIO.OUT) # GPIO Assign mode 2
+GPIO.setup(relay_3, GPIO.OUT) # GPIO Assign mode 3
+GPIO.setup(relay_4, GPIO.OUT) # GPIO Assign mode 4
+GPIO.output(relay_1, GPIO.LOW) 
+GPIO.output(relay_2, GPIO.LOW) 
+GPIO.output(relay_3, GPIO.LOW) 
+GPIO.output(relay_4, GPIO.LOW) 
 
-GPIO.setup(RELAIS_1_GPIO, GPIO.OUT) # GPIO Assign mode
-
-GPIO.output(RELAIS_1_GPIO, GPIO.HIGH) # on
-time.sleep(3)
-GPIO.output(RELAIS_1_GPIO, GPIO.LOW) # out
-	
 id_device = "mcbnew1"
 
 
 def get_data_mcb():
 	print("ambil data di firebase")
-	url = "http://api-lora.otoridashboard.id/get/mcb"
-	body = {
+	url_get_data_mcb = "http://api-lora.otoridashboard.id/get/mcb"
+	body_get_data_mcb = {
 			"id_device": id_device
 			}
-	# response = requests.request("POST", url, json = body)
-	response = requests.post(url, json = body)
+	response = requests.post(url_get_data_mcb, json = body_get_data_mcb)
 	status_code_get_data_mcb = response.status_code
-
 
 	if status_code_get_data_mcb == 200:
 		print("respon code = "+str(status_code_get_data_mcb))
@@ -50,23 +53,71 @@ def get_data_mcb():
 		#if yang mana relay bernilai 0 lalu print
 		#if yang mana relay bernilai 2 lalu print
 		for i in data_json:
-			relay = i
-			nilai = str(data_json[i])
-			if nilai == '0':
-				print(relay, nilai)
-			elif nilai == '1':
-				print(relay, nilai)
-			elif nilai == '2':
-				print(relay, nilai)
-			else:
-				print('nilai ='+nilai)
+			if i == 'relay_1':
+				relay = relay_1
+			elif i == 'relay_2':
+				relay = relay_2
+			elif i == 'relay_3':
+				relay = relay_3
+			elif i == 'relay_4':
+				relay = relay_4
+			else: pass
 
-		#pele pele pele
+			nilai = str(data_json[i])
+
+			if nilai == '0':
+				GPIO.output(relay, GPIO.LOW) # out
+			elif nilai == '1':
+				pass
+			elif nilai == '2':
+				GPIO.output(relay, GPIO.HIGH) # on
+			else:
+				continue
+
+		report_status_relay()
+	
 	else:
 		print("error lain dengan respon code = "+str(status_code_get_data_mcb))
 		get_data_mcb()
 
+def report_status_relay():
+	status_relay_1 = GPIO.input(relay_1)
+	status_relay_2 = GPIO.input(relay_2)
+	status_relay_3 = GPIO.input(relay_3)
+	status_relay_4 = GPIO.input(relay_4)
+	print("status relay 1 = ",format(status_relay_1))
+	print("status relay 2 = ",format(status_relay_2))
+	print("status relay 3 = ",format(status_relay_3))
+	print("status relay 4 = ",format(status_relay_4))
+
+	url_report_status_relay = "http://api-lora.otoridashboard.id/update/statusdashboard"
+	body_report_status_relay = {
+			 "id_device": id_device,
+   			 "relay": "relay_1",
+   			 "status": format(status_relay_1)
+			}
+	status_code = 0
+	while status_code != 200:
+		response = requests.post(url_report_status_relay, json = body_report_status_relay)
+		try: print(response.json())
+		except: print('error network')
+		status_code = response.status_code
+	# status_code_report_status_relay = response.status_code
+	# if status_code_report_status_relay == 200:
+	# 	print("respon code REPORT = "+str(status_code_report_status_relay))
+	# 	data_json=response.json()
+	# 	print("respon JSON REPORT = "+str(data_json))
+	# else:
+	# 	print("respon code REPORT= "+str(status_code_report_status_relay))
+
+
+
+
 while True:
 	get_data_mcb()
-	print(int(time.time()))
-	time.sleep(60)
+	# print(int(time.time()))
+	time.sleep(10)
+
+#buat fungsi FC lalu  print
+#buat fungsi KeyboardInterrupt lalu print
+
