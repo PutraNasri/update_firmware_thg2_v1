@@ -49,6 +49,17 @@ def get_data_mcb():
 		#if yang mana relay bernilai 1 lalu print
 		#if yang mana relay bernilai 0 lalu print
 		#if yang mana relay bernilai 2 lalu print
+		for i in data_json:
+			relay = i
+			nilai = str(data_json[i])
+			if nilai == '0':
+				print(relay, nilai)
+			elif nilai == '1':
+				print(relay, nilai)
+			elif nilai == '2':
+				print(relay, nilai)
+			else:
+				print('nilai ='+nilai)
 
 		#pele pele pele
 	else:
