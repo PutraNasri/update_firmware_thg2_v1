@@ -93,23 +93,19 @@ def report_status_relay():
 	url_report_status_relay = "http://api-lora.otoridashboard.id/update/statusdashboard"
 	body_report_status_relay = {
 			 "id_device": id_device,
-   			 "relay": "relay_1",
-   			 "status": format(status_relay_1)
+			 "relay_1": format(status_relay_1),
+			 "relay_2": format(status_relay_2),
+			 "relay_3": format(status_relay_3),
+			 "relay_4": format(status_relay_4)
 			}
+			 
+
 	status_code = 0
 	while status_code != 200:
 		response = requests.post(url_report_status_relay, json = body_report_status_relay)
 		try: print(response.json())
 		except: print('error network')
 		status_code = response.status_code
-	# status_code_report_status_relay = response.status_code
-	# if status_code_report_status_relay == 200:
-	# 	print("respon code REPORT = "+str(status_code_report_status_relay))
-	# 	data_json=response.json()
-	# 	print("respon JSON REPORT = "+str(data_json))
-	# else:
-	# 	print("respon code REPORT= "+str(status_code_report_status_relay))
-
 
 
 
@@ -118,6 +114,5 @@ while True:
 	# print(int(time.time()))
 	time.sleep(10)
 
-#buat fungsi FC lalu  print
-#buat fungsi KeyboardInterrupt lalu print
+
 
