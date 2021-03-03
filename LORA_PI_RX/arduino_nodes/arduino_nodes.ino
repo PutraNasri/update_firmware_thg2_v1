@@ -4,13 +4,16 @@
 #include <SDISerial.h>
 #include <string.h>
 #define DATA_ATMOS14 5
+const int analogInPin = A5;
 SDISerial connection_ATMOS14(DATA_ATMOS14);
 char output_buffer[125]; // just for uart prints
 char tmp_buffer[4];
+int sensorValue = 0; 
 
 
 Sleep sleep;
-unsigned long sleepTime = 900000;
+//unsigned long sleepTime = 900000;
+unsigned long sleepTime = 1000;
 
 
 
@@ -21,7 +24,7 @@ String id_device = "xxxxxxxx";
 void setup() {
   connection_ATMOS14.begin();
   Serial.begin(9600);
-  char* resp = connection_ATMOS14.sdi_query("1C!",1000);
+//  char* resp = connection_ATMOS14.sdi_query("1C!",1000);
   delay(3000);//3 seconds should be more than enough
 
   while (!Serial);
@@ -39,7 +42,8 @@ void setup() {
 }
 
 void loop() {
-  
+  char* resp1 = connection_ATMOS14.sdi_query("1C!",1000);
+  delay(1000);
   char* resp = connection_ATMOS14.sdi_query("1D0!",1000);
   sprintf(output_buffer,"%s",resp?resp:"No Response Recieved!!");
   char *a = strtok(output_buffer,"+");
@@ -54,11 +58,17 @@ void loop() {
   String Atmospheric_Pressure_in_kPa = String(e);
 
   float humidity = Relative_humidity.toFloat()*100;
+
+  sensorValue = analogRead(analogInPin);
+  float volt = sensorValue * (5 / 1023.0) ;
+  float milivolt = volt * 1000 ;
+  int outputValue = map(milivolt, 120, 1005, 0, 50);
   
   Serial.println("Vapor pressure in kPa = "+String(b));
   Serial.println("Temperature = "+String(c));
   Serial.println("humidity = "+String(humidity));
   Serial.println("Atmospheric Pressure in kPa = "+String(e));
+  Serial.println("soil muisture = "+String(outputValue)+" %"+" milivolt = "+milivolt+" analog = "+sensorValue);
   Serial.println("");
 
   
@@ -80,11 +90,11 @@ void loop() {
   delay(100);
   
   // send packet
-  Serial.println("Sending packet: ");
-  delay(100);
-  LoRa.beginPacket();
-  LoRa.print(data_no_encryp);
-  LoRa.endPacket();
+//  Serial.println("Sending packet: ");
+//  delay(100);
+//  LoRa.beginPacket();
+//  LoRa.print(data_no_encryp);
+//  LoRa.endPacket();
  // sleep nodes
   Serial.println("Start Sleep");
   digitalWrite(LED_BUILTIN,LOW);
