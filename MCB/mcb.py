@@ -1,4 +1,5 @@
 import RPi.GPIO as GPIO
+from datetime import datetime
 import logging
 import time
 import json
@@ -12,7 +13,7 @@ relay_2 = 18
 relay_3 = 23
 relay_4 = 24
 
-GPIO.setmode(GPIO.BCM) 
+GPIO.setmode(GPIO.BCM)
 GPIO.setwarnings(False)
 GPIO.setup(relay_1, GPIO.OUT) # GPIO Assign mode 1
 GPIO.setup(relay_2, GPIO.OUT) # GPIO Assign mode 2
@@ -25,6 +26,7 @@ GPIO.output(relay_4, GPIO.LOW)
 
 id_device = "mcbnew1"
 
+time.sleep(20)
 
 def get_data_mcb():
 	print("ambil data di firebase")
@@ -66,11 +68,11 @@ def get_data_mcb():
 			nilai = str(data_json[i])
 
 			if nilai == '0':
-				GPIO.output(relay, GPIO.LOW) # out
+				GPIO.output(relay, GPIO.LOW) # on
 			elif nilai == '1':
 				pass
 			elif nilai == '2':
-				GPIO.output(relay, GPIO.HIGH) # on
+				GPIO.output(relay, GPIO.HIGH) # off
 			else:
 				continue
 
@@ -89,6 +91,8 @@ def report_status_relay():
 	print("status relay 2 = ",format(status_relay_2))
 	print("status relay 3 = ",format(status_relay_3))
 	print("status relay 4 = ",format(status_relay_4))
+	now = datetime.now()
+	dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
 
 	url_report_status_relay = "http://api-lora.otoridashboard.id/update/statusdashboard"
 	body_report_status_relay = {
@@ -96,7 +100,8 @@ def report_status_relay():
 			 "relay_1": format(status_relay_1),
 			 "relay_2": format(status_relay_2),
 			 "relay_3": format(status_relay_3),
-			 "relay_4": format(status_relay_4)
+			 "relay_4": format(status_relay_4),
+			 "time": str(dt_string)
 			}
 			 
 

@@ -8,12 +8,12 @@ const int analogInPin = A5;
 SDISerial connection_ATMOS14(DATA_ATMOS14);
 char output_buffer[125]; // just for uart prints
 char tmp_buffer[4];
-int sensorValue = 0; 
+int sensorValue = 0;
 
 
 Sleep sleep;
 //unsigned long sleepTime = 900000;
-unsigned long sleepTime = 1000;
+unsigned long sleepTime = 300000;
 
 
 
@@ -62,13 +62,13 @@ void loop() {
   sensorValue = analogRead(analogInPin);
   float volt = sensorValue * (5 / 1023.0) ;
   float milivolt = volt * 1000 ;
-  int outputValue = map(milivolt, 120, 1005, 0, 50);
+  int moisture = map(milivolt, 120, 1005, 0, 50);
   
   Serial.println("Vapor pressure in kPa = "+String(b));
   Serial.println("Temperature = "+String(c));
   Serial.println("humidity = "+String(humidity));
   Serial.println("Atmospheric Pressure in kPa = "+String(e));
-  Serial.println("soil muisture = "+String(outputValue)+" %"+" milivolt = "+milivolt+" analog = "+sensorValue);
+  Serial.println("soil moisture = "+String(moisture)+" %"+" milivolt = "+milivolt+" analog = "+sensorValue);
   Serial.println("");
 
   
@@ -77,7 +77,7 @@ void loop() {
 //  float milivolt = sensorValue * 5.0;
 //  Serial.println(milivolt);
   
-  String data_no_encryp = id_device+"@"+Vapor_pressure_in_kPa+"@"+Temperature+"@"+humidity+"@"+Atmospheric_Pressure_in_kPa+"@nan@nan";
+  String data_no_encryp = id_device+"@"+Vapor_pressure_in_kPa+"@"+Temperature+"@"+humidity+"@"+Atmospheric_Pressure_in_kPa+"@"+moisture+"@nan";
 //  String data_no_encryp = id_device+"@1@nan@nan@nan@nan@nan";
   
 //  Serial.print("Ciphertext: ");
@@ -85,16 +85,14 @@ void loop() {
   
   Serial.println(data_no_encryp);
 
-  
-  
   delay(100);
   
   // send packet
-//  Serial.println("Sending packet: ");
-//  delay(100);
-//  LoRa.beginPacket();
-//  LoRa.print(data_no_encryp);
-//  LoRa.endPacket();
+  Serial.println("Sending packet: ");
+  delay(100);
+  LoRa.beginPacket();
+  LoRa.print(data_no_encryp);
+  LoRa.endPacket();
  // sleep nodes
   Serial.println("Start Sleep");
   digitalWrite(LED_BUILTIN,LOW);
