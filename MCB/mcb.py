@@ -30,7 +30,7 @@ time.sleep(20)
 
 def get_data_mcb():
 	print("ambil data di firebase")
-	url_get_data_mcb = "http://api-lora.otoridashboard.id/get/mcb"
+	url_get_data_mcb = "https://api-lora-otoridashboard.et.r.appspot.com/get/mcb"
 	body_get_data_mcb = {
 			"id_device": id_device
 			}
@@ -94,7 +94,7 @@ def report_status_relay():
 	now = datetime.now()
 	dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
 
-	url_report_status_relay = "http://api-lora.otoridashboard.id/update/statusdashboard"
+	url_report_status_relay = "https://api-lora-otoridashboard.et.r.appspot.com/update/statusdashboard"
 	body_report_status_relay = {
 			 "id_device": id_device,
 			 "relay_1": format(status_relay_1),
@@ -117,7 +117,7 @@ def report_status_relay():
 while True:
 	get_data_mcb()
 	# print(int(time.time()))
-	time.sleep(10)
+	time.sleep(20)
 
 
 
