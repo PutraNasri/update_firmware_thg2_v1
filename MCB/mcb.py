@@ -75,10 +75,11 @@ def get_data_mcb():
 				GPIO.output(relay, GPIO.HIGH) # off
 			else:
 				continue
-
+		response.close()
 		report_status_relay()
 	
 	else:
+		response.close()
 		print("error lain dengan respon code = "+str(status_code_get_data_mcb))
 		get_data_mcb()
 
@@ -103,21 +104,33 @@ def report_status_relay():
 			 "relay_4": format(status_relay_4),
 			 "time": str(dt_string)
 			}
-			 
 
-	status_code = 0
-	while status_code != 200:
-		response = requests.post(url_report_status_relay, json = body_report_status_relay)
-		try: print(response.json())
-		except: print('error network')
-		status_code = response.status_code
+	response = requests.post(url_report_status_relay, json = body_report_status_relay)
+	status_code = response.status_code
+
+	# status_code = 0
+	# while status_code != 200:
+	# 	response = requests.post(url_report_status_relay, json = body_report_status_relay)
+	# 	try: print(response.json())
+	# 	except: print('error network')
+	# 	status_code = response.status_code
+
+	if status_code == 200 :
+		print(response.json())
+		response.close()
+	
+	else :
+		print("error push report")
+		print("respon code report = "+str(status_code))
+		response.close()
+		report_status_relay()
 
 
 
 while True:
 	get_data_mcb()
 	# print(int(time.time()))
-	time.sleep(20)
+	time.sleep(15)
 
 
 
