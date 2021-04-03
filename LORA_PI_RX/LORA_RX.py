@@ -1,3 +1,4 @@
+import RPi.GPIO as GPIO
 from time import sleep
 from datetime import datetime
 from SX127x.LoRa import *
@@ -8,6 +9,22 @@ import json
 import requests
 import sys
 import os
+
+
+led_1 = 5
+led_2 = 6
+led_3 = 13
+
+GPIO.setmode(GPIO.BCM)
+GPIO.setwarnings(False)
+
+GPIO.setup(led_1, GPIO.OUT)
+GPIO.setup(led_2, GPIO.OUT)
+GPIO.setup(led_3, GPIO.OUT)
+
+GPIO.output(led_1, GPIO.LOW) 
+GPIO.output(led_2, GPIO.LOW) 
+GPIO.output(led_3, GPIO.LOW) 
 
 global path
 path="/home/pi/LORA_PI_RX/"
@@ -39,6 +56,9 @@ class LoRaRcvCont(LoRa):
 		rssi_value = self.get_rssi_value()
 		status = self.get_modem_status()
 		print ("\nReceived from node = "+data)
+		GPIO.output(led_2, GPIO.HIGH)
+		time.sleep(1)
+		GPIO.output(led_2, GPIO.LOW)
 
 		with open(path+'list_node.txt') as f:
 			list_txt = f.readlines()
@@ -100,7 +120,7 @@ class LoRaRcvCont(LoRa):
 						semua+='\n'
 					f.write(semua)
 			#ambil data txt jadikan list
-			#buat variabel data_a = 123 
+			#buat variabel data_a = 123
 			#jika data_a tidak sama dengan data list yang di txt tadi maka print pass
 			#jika sama print sama
 			# self.bacatxt()
@@ -111,6 +131,8 @@ class LoRaRcvCont(LoRa):
 
 	def push_data(self,id_node,data,rssi_value):
 		
+		GPIO.output(led_3, GPIO.HIGH) 
+
 		url_push_data = "http://api-lora.otoridashboard.id/push/node"
 		
 		now = datetime.now()
@@ -151,12 +173,14 @@ class LoRaRcvCont(LoRa):
 
 		if response.status_code == 200 :
 			response.close()
+			GPIO.output(led_3, GPIO.LOW) 
 			print("respon json berhasil push = "+str(response.status_code))
 			with open(path+'log.txt','w') as note:
 				note.write('')
 
 		else:
 			print("error push")
+			GPIO.output(led_3, GPIO.LOW) 
 			self.log_data(data_push)
 			response.close()
 
@@ -176,7 +200,7 @@ class LoRaRcvCont(LoRa):
 		requests.post(url_push_data, json=param)
 		print('push data success')
 
-
+GPIO.output(led_1, GPIO.HIGH)
 
 lora = LoRaRcvCont(verbose=False)
 lora.set_mode(MODE.STDBY)
