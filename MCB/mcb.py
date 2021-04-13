@@ -184,7 +184,7 @@ def report_status_relay():
 while True:
 	get_data_mcb()
 	# print(int(time.time()))
-	time.sleep(30)
+	time.sleep(240)
 
 
 

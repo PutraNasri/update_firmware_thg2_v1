@@ -29,7 +29,7 @@ GPIO.output(led_3, GPIO.LOW)
 global path
 path="/home/pi/LORA_PI_RX/"
 
-time.sleep(20)
+time.sleep(50)
 
 BOARD.setup()
 class LoRaRcvCont(LoRa):
