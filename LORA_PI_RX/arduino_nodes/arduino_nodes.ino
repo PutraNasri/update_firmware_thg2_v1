@@ -4,7 +4,7 @@
 #include <SDISerial.h>
 #include <string.h>
 #define DATA_ATMOS14 5
-//const int analogInPin = A5;
+const int analogInPin = A5;
 SDISerial connection_ATMOS14(DATA_ATMOS14);
 char output_buffer[125]; // just for uart prints
 char tmp_buffer[4];
@@ -59,10 +59,10 @@ void loop() {
 
   float humidity = Relative_humidity.toFloat()*100;
 
-//  sensorValue = analogRead(analogInPin);
-//  float volt = sensorValue * (5 / 1023.0) ;
-//  float milivolt = volt * 1000 ;
-//  int moisture = map(milivolt, 120, 1005, 0, 50);
+  sensorValue = analogRead(analogInPin);
+  float volt = sensorValue * (5 / 1023.0) ;
+  float milivolt = volt * 1000 ;
+  int moisture = map(milivolt, 120, 1005, 0, 50);
   
   Serial.println("Vapor pressure in kPa = "+String(b));
   Serial.println("Temperature = "+String(c));
@@ -77,8 +77,8 @@ void loop() {
 //  float milivolt = sensorValue * 5.0;
 //  Serial.println(milivolt);
   
-//  String data_no_encryp = id_device+"@"+Vapor_pressure_in_kPa+"@"+Temperature+"@"+humidity+"@"+Atmospheric_Pressure_in_kPa+"@"+moisture+"@nan";
-  String data_no_encryp = id_device+"@"+Vapor_pressure_in_kPa+"@"+Temperature+"@"+humidity+"@"+Atmospheric_Pressure_in_kPa+"@nan"+"@nan";
+  String data_no_encryp = id_device+"@"+Vapor_pressure_in_kPa+"@"+Temperature+"@"+humidity+"@"+Atmospheric_Pressure_in_kPa+"@"+moisture+"@nan";
+//  String data_no_encryp = id_device+"@"+Vapor_pressure_in_kPa+"@"+Temperature+"@"+humidity+"@"+Atmospheric_Pressure_in_kPa+"@nan"+"@nan";
 //  String data_no_encryp = id_device+"@1@nan@nan@nan@nan@nan";
   
 //  Serial.print("Ciphertext: ");
