@@ -98,10 +98,8 @@ void setup () {
   u8g2.setCursor(2,52);
   u8g2.print("loading....");
   u8g2.sendBuffer(); 
-  if (! rtc.begin()) {   
-    
-//    Serial.println("Couldn't find RTC");
-    
+  if (! rtc.begin()) {  
+//    Serial.println("Couldn't find RTC");    
     while (1);
   }
   if (! rtc.isrunning()) {
@@ -401,7 +399,7 @@ void setup () {
 
   // panggil service() untuk merecord data pada saat awal start device
   service();
-  
+  delay(2000);
   Thread1.onRun(service);
   Thread1.setInterval(delay_server_service*menit_to_detik*detik_to_milidetik);
   Thread2.onRun(acpn_mode);
@@ -410,12 +408,9 @@ void setup () {
   Thread3.setInterval(40000);
   Thread4.onRun(service_lcd);
   Thread4.setInterval(2000);
-//  if (Serial_s == "1"){
-//    Serial.println("device ready "+version_firmware);
-//  } 
 }
 
-void service(){ 
+void service(){
   if(WiFi.status() == WL_CONNECTED){     
     String pemilik_ping = httpPOSTRequest_pemilik();
     JSONVar var_pemilik_ping = JSON.parse(pemilik_ping);
@@ -492,7 +487,12 @@ void acpn_mode(){
 void service_control(){
   if(WiFi.status() == WL_CONNECTED){
     delay(1000);
-    if(pinger.Ping("otoridashboard.id") == false){
+    
+    String pemilik_ping = httpPOSTRequest_pemilik();
+    JSONVar var_pemilik_ping = JSON.parse(pemilik_ping);
+    pemilik_ping = var_pemilik_ping["pemilik"];
+    
+    if(pemilik_ping ==""){
       
 //      Serial.println("Error during ping command service_control.");
       
@@ -621,15 +621,11 @@ String httpPOSTRequest_pemilik(){
 //  Serial.print("HTTP Response data pemilik: ");
 //  Serial.println(payload);
   if (body==200){
-    Serial.println("ok");
     http.end();
     return payload;
   }
   else {
-    String error = "error request";
-//    Serial.println("error request pemilik"); 
     http.end(); 
-//    return String(error);   
   }
   http.end();
 }
@@ -647,18 +643,11 @@ String httpPOSTRequest_delay(){
 //  Serial.print("HTTP Response data delay: ");
 //  Serial.println(payload);
   if (body==200){
-//    Serial.println("ok");
     http.end();
-    return payload;
-    
+    return payload;  
   }
   else {
-//    String error = "error request";   
-//    Serial.println("error request delay");
-    http.end();
-     
-//    http.setReuse();
-//    return String(error);    
+    http.end();   
   }
   http.end();
 }
@@ -676,18 +665,14 @@ String httpPOSTRequest_adjustment_rh_temp(){
 //  Serial.print("HTTP Response data adjustment: ");
 //  Serial.println(payload);  
   if (body==200){
-//    Serial.println("ok");
     http.end(); 
     return payload;
   }
   else {
     String error = "error request";
-//    Serial.println("error request adjust");
-    http.end();   
-//    return String(error);    
+    http.end();     
   }
   http.end(); 
-//  return payload; 
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////
 String httpPOSTRequest_post_data(String data){
@@ -705,17 +690,13 @@ String httpPOSTRequest_post_data(String data){
 //  Serial.print("HTTP Response data post data: ");
 //  Serial.println(payload); 
   if (body==200){
-//    Serial.println("ok");
     http.end();  
-    return payload;
-    
+    return payload; 
   }
   else {
     String error = "error request";
-//    Serial.println("error");
     http.end();
-    tulis_sd_card(); 
-//    return String(error);   
+    tulis_sd_card();   
   }
   http.end();
 }
