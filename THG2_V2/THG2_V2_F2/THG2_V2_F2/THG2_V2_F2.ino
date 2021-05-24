@@ -14,15 +14,14 @@
 #include <WiFiClient.h>
 #include <Arduino_JSON.h>
 #include <WiFiManager.h>
-#include "DHTesp.h"
+#include <OneWire.h>
+#include <DallasTemperature.h>
+#define ONE_WIRE_BUS 0
+OneWire oneWire(ONE_WIRE_BUS);
+DallasTemperature sensorSuhu(&oneWire);
+float suhuSekarang;
 //#include <SPI.h>
 #include <SD.h>
-//DHTesp dht;
-///////////////////////////////////
-#include "DHT.h"
-#define DHTPIN 0
-#define DHTTYPE DHT22
-DHT dht(DHTPIN, DHTTYPE);
 ///////////////////////////////////
 #include <Wire.h>
 #include "RTClib.h"
@@ -84,7 +83,8 @@ void setup () {
     while (!Serial); // for Leonardo/Micro/Zero
   #endif
   Serial.begin(115200);
-  dht.begin();
+//  dht.begin();
+  pinMode(pin_sensor,INPUT);
   
   u8g2.begin();
   u8g2.clearBuffer();
@@ -344,7 +344,7 @@ void setup () {
 }
 
 void service(){
-  if(WiFi.status() == WL_CONNECTED){     
+  if(WiFi.status() == WL_CONNECTED){
     String pemilik_ping = httpPOSTRequest_pemilik();
     JSONVar var_pemilik_ping = JSON.parse(pemilik_ping);
     pemilik_ping = var_pemilik_ping["pemilik"];
@@ -356,36 +356,29 @@ void service(){
         if(pemilik != "no_id_user" && pemilik != "lock"){
           sts_server = "1";
           cek_data_sdcard_and_send_to_firebase();
-          float h = dht.readHumidity();
-          float t = dht.readTemperature();
+          float temperature = getTemp();
+          float h = 00;
 
-          if(String(h)=="nan"){
-            u8g2.clearBuffer();
-            u8g2.clearBuffer();
-            u8g2.setFont(u8g2_font_logisoso20_tr); // choose a suitable font 42 pixel
-            u8g2.setCursor(1,52);
-            u8g2.print("sensor error....");
-            u8g2.sendBuffer(); 
-            delay(1000);
-            ESP.restart();
-          }else{
-            while(!timeClient.update()) {
+          while(!timeClient.update()) {
             timeClient.forceUpdate();
-            }
-            formattedDate = timeClient.getFormattedDate();
-            int splitT = formattedDate.indexOf("T");
-            dayStamp = formattedDate.substring(0, splitT);
-            timeStamp = formattedDate.substring(splitT+1, formattedDate.length()-1);
-            String data = String(t+temp_call)+"@"+String(h+rh_call)+"@"+String(dayStamp)+"@"+String(timeStamp);
-            httpPOSTRequest_post_data(data); 
-          }     
+          }
+          formattedDate = timeClient.getFormattedDate();
+          int splitT = formattedDate.indexOf("T");
+          dayStamp = formattedDate.substring(0, splitT);
+          timeStamp = formattedDate.substring(splitT+1, formattedDate.length()-1);
+          String data = String(temperature+temp_call)+"@"+String(h+rh_call)+"@"+String(dayStamp)+"@"+String(timeStamp);
+          httpPOSTRequest_post_data(data);      
            
         }else if(pemilik=="no_id_user"){
-          
+          sts_server = "0";
+          Serial.println("no_id_user");          
         }else if(pemilik=="lock"){
+          sts_server = "0";
+          Serial.println("device lock");
           tulis_sd_card();         
         }         
-      }else{       
+      }else{  
+        Serial.println("data pemilik firebase kosong");     
       }  
     }   
   }else{   
@@ -468,48 +461,36 @@ void service_control(){
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 void service_lcd(){
-  String tempp = String(dht.readTemperature()+temp_call);
+  String tempp = String(getTemp()+temp_call);
+  Serial.println(tempp);
   char * temp = strdup(tempp.c_str());
-  String humm =String(dht.readHumidity()+rh_call);
-  char * hum = strdup(humm.c_str());
-  if (tempp == "nan"){
-    u8g2.clearBuffer();
-    u8g2.clearBuffer();
-    u8g2.setFont(u8g2_font_logisoso20_tr); // choose a suitable font 42 pixel
-    u8g2.setCursor(2,52);
-    u8g2.print("sensor error....");
-    u8g2.sendBuffer(); 
-    delay(1000);
-    ESP.restart();
-    
-  }else{
-    u8g2.clearBuffer();          
-  //(yy,xx)
-    u8g2.setFont(u8g2_font_logisoso42_tr);
-    u8g2.setCursor(2,43);
-    char * depan_temp = strtok(temp,".");
-    char * belakang_temp = strtok(NULL,".");
-    char * depan_hum = strtok(hum,".");
-    char * belakang_hum = strtok(NULL,".");
-    u8g2.print(String(depan_temp)+",");     
-    u8g2.setFont(u8g2_font_logisoso20_tr);
-    u8g2.setCursor(98,28);
-    u8g2.print(".");
-    u8g2.setCursor(105,43);
-    u8g2.print("C");
-    u8g2.setCursor(92,20);
-    u8g2.print(belakang_temp);    
-    u8g2.setFont(u8g2_font_logisoso42_tr);
-    u8g2.setCursor(2,95);
-    u8g2.print(String(depan_hum)+",");  
-    u8g2.setFont(u8g2_font_logisoso20_tr);
-    u8g2.setCursor(105,96);
-    u8g2.print("%");
-    u8g2.setCursor(92,74);
-    u8g2.print(belakang_hum);
-    u8g2.sendBuffer();    
-  } 
-  yield(); 
+  
+  
+  char * depan_temp = strtok(temp,".");
+  char * belakang_temp = strtok(NULL,".");
+  
+
+  u8g2.clearBuffer();          // clear the internal memory
+  u8g2.clearBuffer();
+  u8g2.setFont(u8g2_font_logisoso46_tn); // choose a suitable font 42 pixel
+  u8g2.setCursor(2,52);
+  
+  u8g2.print(String(depan_temp+00));
+  
+  u8g2.setFont(u8g2_font_logisoso26_tr); // choose a suitable font 42 pixel
+  u8g2.setCursor(85,25);
+  u8g2.print(","+String(belakang_temp));
+  
+  u8g2.setCursor(100,60);
+  u8g2.print("C");
+
+  u8g2.setFont(u8g2_font_logisoso20_tr);
+  u8g2.setCursor(20,97);
+  u8g2.print("otori.id");
+
+  u8g2.sendBuffer(); 
+
+  yield();
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////
 String httpPOSTRequest_pemilik(){
@@ -606,8 +587,8 @@ String httpPOSTRequest_post_data(String data){
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////
 void tulis_sd_card(){
-  float h = dht.readHumidity();
-  float t = dht.readTemperature();  
+  float h = 00;
+  float t = getTemp()+00;  
 //  DateTime now = rtc.now();
 //  String date_rtc = String(now.year(),DEC) + "-" + String(now.month(), DEC) + "-" + String(now.day(), DEC);
 //  String time_rtc = String(now.hour(), DEC) + ":" + String(now.minute(), DEC) + ":" + String(now.second(), DEC);
@@ -667,7 +648,7 @@ void tulis_sd_card(){
 void cek_data_sdcard_and_send_to_firebase(){
   if(SD.exists("log.txt")){
     myFile = SD.open("log.txt");
-    String data;
+    String da ta;
     int count =1;
     if(myFile){     
       while(myFile.available()){
