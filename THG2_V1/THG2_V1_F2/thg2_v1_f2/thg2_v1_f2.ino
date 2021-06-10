@@ -5,6 +5,7 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 #include <Thread.h>
 #include <ESP8266WiFi.h>
+#include <ESP8266Ping.h>
 #include <NTPClient.h>
 #include <WiFiUdp.h>
 #include <DNSServer.h>
@@ -14,7 +15,7 @@
 #include <WiFiClient.h>
 #include <Arduino_JSON.h>
 #include <WiFiManager.h>
-#include "DHTesp.h"
+//#include "DHTesp.h"
 //#include <SPI.h>
 #include <SD.h>
 //DHTesp dht;
@@ -36,6 +37,7 @@ DHT dht(DHTPIN, DHTTYPE);
 #endif
 U8G2_SSD1327_EA_W128128_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);  /* Uno: A4=SDA, A5=SCL, add "u8g2.setBusClock(400000);" into setup() for speedup if possible */
 //////////////////////////////////
+const char* remote_host = "http://otoridashboard.id";
 String get_pemilik = "http://otoridashboard.id/thg2/get_pemilik";
 String get_adjustment_rh_temp = "http://otoridashboard.id/thg2/get_adjustment_rh_temp";
 String get_delay = "http://otoridashboard.id/thg2/get_delay";
@@ -84,6 +86,7 @@ void setup () {
     while (!Serial); // for Leonardo/Micro/Zero
   #endif
   Serial.begin(115200);
+  pinMode(DHTPIN, INPUT);
   dht.begin();
   
   u8g2.begin();
@@ -105,32 +108,33 @@ void setup () {
     // This line sets the RTC with an explicit date & time, for example to set
     // January 21, 2014 at 3am you would call:
     // rtc.adjust(DateTime(2014, 1, 21, 3, 0, 0));
-    u8g2.clearBuffer();
-    u8g2.clearBuffer();
-    u8g2.setFont(u8g2_font_logisoso20_tr); // choose a suitable font 42 pixel
-    u8g2.setCursor(2,52);
-    u8g2.print("RTC error....");
-    u8g2.sendBuffer();
-    delay(1000);
-    ESP.restart();
+    
+//    u8g2.clearBuffer();
+//    u8g2.clearBuffer();
+//    u8g2.setFont(u8g2_font_logisoso20_tr); // choose a suitable font 42 pixel
+//    u8g2.setCursor(2,52);
+//    u8g2.print("RTC error....");
+//    u8g2.sendBuffer();
+//    delay(1000);
+//    ESP.restart();
   }
 /////////////////////////////////////////////////////////////////////////////
   while (!Serial) {
     ; // wait for serial port to connect. Needed for native USB port only
   }
-   
+  
   if (!SD.begin(15)) {
-    u8g2.clearBuffer();
-    u8g2.clearBuffer();
-    u8g2.setFont(u8g2_font_logisoso20_tr); // choose a suitable font 42 pixel
-    u8g2.setCursor(2,52);
-    u8g2.print("SD error....");
-    u8g2.sendBuffer(); 
-    delay(1000);
-    ESP.restart();  
+//    u8g2.clearBuffer();
+//    u8g2.clearBuffer();
+//    u8g2.setFont(u8g2_font_logisoso20_tr); // choose a suitable font 42 pixel
+//    u8g2.setCursor(2,52);
+//    u8g2.print("SD error....");
+//    u8g2.sendBuffer(); 
+//    delay(1000);
+//    ESP.restart();  
     while (1);
   }
-   
+  Serial.println("initialization SD done.");
   delay(1000);
 ////////////////////////////////////////////////////////////////////////////////////
   if(SD.exists("id_device.txt")){
@@ -138,33 +142,41 @@ void setup () {
     String id_device_sdcard;
     int count=1;
     if(myFile){
-      
       while(myFile.available()){
         id_device_sdcard = String(myFile.readStringUntil('\n'));
         id_device_sdcard.trim();       
         id_device = id_device_sdcard;
         ssid      = id_device.c_str();   
+        
         delay(3000);  
       }
       myFile.close();
-    }else{
-      u8g2.clearBuffer();
-      u8g2.clearBuffer();
-      u8g2.setFont(u8g2_font_logisoso20_tr); // choose a suitable font 42 pixel
-      u8g2.setCursor(2,52);
-      u8g2.print("SD2 error....");
+      Serial.println(ssid);
+      //tambahkan print id di lcd 
+      
+      u8g2.setFont(u8g2_font_logisoso16_tr); // choose a suitable font 42 pixel
+      u8g2.setCursor(2,90);
+      u8g2.print(ssid);
       u8g2.sendBuffer(); 
+
+    }else{
+//      u8g2.clearBuffer();
+//      u8g2.clearBuffer();
+//      u8g2.setFont(u8g2_font_logisoso20_tr); // choose a suitable font 42 pixel
+//      u8g2.setCursor(2,52);
+//      u8g2.print("SD2 error....");
+//      u8g2.sendBuffer(); 
       delay(1000);     
     }
   }else{
-    u8g2.clearBuffer();
-    u8g2.clearBuffer();
-    u8g2.setFont(u8g2_font_logisoso20_tr); // choose a suitable font 42 pixel
-    u8g2.setCursor(2,52);
-    u8g2.print("ID error....");
-    u8g2.sendBuffer(); 
-    delay(1000);
-    ESP.restart();   
+//    u8g2.clearBuffer();
+//    u8g2.clearBuffer();
+//    u8g2.setFont(u8g2_font_logisoso20_tr); // choose a suitable font 42 pixel
+//    u8g2.setCursor(2,52);
+//    u8g2.print("ID error....");
+//    u8g2.sendBuffer(); 
+//    delay(1000);
+//    ESP.restart();   
   }
 /////////////////////////////////////////////////////////////////////  
 
@@ -208,7 +220,9 @@ void setup () {
       
       sts_adjustment_rh_temp = adjustment_config;
       delay_server = delay_config;
-      pemilik = id_pemilik_config;    
+      pemilik = id_pemilik_config; 
+      Serial.println("setting pemilik ok");   
+      Serial.println("pemilik = "+pemilik);
     }else{      
       u8g2.clearBuffer();
       u8g2.clearBuffer();
@@ -331,26 +345,33 @@ void setup () {
   int delay_server_service = delay_server.toInt();
 
   // panggil service() untuk merecord data pada saat awal start device
-  service();
+//  service();
   delay(2000);
   Thread1.onRun(service);
   Thread1.setInterval(delay_server_service*menit_to_detik*detik_to_milidetik);
   Thread2.onRun(acpn_mode);
   Thread2.setInterval(500);
   Thread3.onRun(service_control);
-  Thread3.setInterval(40000);
+  Thread3.setInterval(90000);
   Thread4.onRun(service_lcd);
-  Thread4.setInterval(2000);
+  Thread4.setInterval(3000);
+  
+  delay(2000);
+  service();
 }
 
+
 void service(){
-  if(WiFi.status() == WL_CONNECTED){     
+  if(WiFi.status() == WL_CONNECTED){  
+//    delay(2000);   
     String pemilik_ping = httpPOSTRequest_pemilik();
     JSONVar var_pemilik_ping = JSON.parse(pemilik_ping);
     pemilik_ping = var_pemilik_ping["pemilik"];
-       
+
+     
     if (pemilik_ping ==""){
-        tulis_sd_card();
+      Serial.println("ping pemilik gagal");
+      tulis_sd_card();
     }else{    
       if(pemilik != ""){
         if(pemilik != "no_id_user" && pemilik != "lock"){
@@ -363,13 +384,15 @@ void service(){
             u8g2.clearBuffer();
             u8g2.clearBuffer();
             u8g2.setFont(u8g2_font_logisoso20_tr); // choose a suitable font 42 pixel
-            u8g2.setCursor(1,52);
-            u8g2.print("sensor error....");
+            u8g2.setCursor(0,52);
+            u8g2.print("snr1 err ....");
             u8g2.sendBuffer(); 
+            Serial.println("snr1 err....");
+            digitalWrite(DHTPIN,LOW);
             delay(1000);
             ESP.restart();
           }else{
-            while(!timeClient.update()) {
+            while(!timeClient.update()){
             timeClient.forceUpdate();
             }
             formattedDate = timeClient.getFormattedDate();
@@ -384,10 +407,14 @@ void service(){
           
         }else if(pemilik=="lock"){
           tulis_sd_card();         
-        }         
+        }
+        yield();         
       }else{       
       }  
-    }   
+    } 
+
+
+  
   }else{   
     tulis_sd_card();  
   }
@@ -420,11 +447,12 @@ void service_control(){
     
     if(pemilik_ping ==""){     
       sts_server = "0"; 
+//      ESP.restart(); 
     }else{      
       String delay_server_control = httpPOSTRequest_delay();
       JSONVar var_delay_control = JSON.parse(delay_server_control);
       delay_server_control = var_delay_control["delay"];
-//      Serial.println("delay control = "+delay_server);
+      Serial.println("delay control = "+delay_server);
       delay(1000);     
       String sts_adjustment_rh_temp_control = httpPOSTRequest_adjustment_rh_temp();
       JSONVar var_adjustment_rh_temp_control =JSON.parse(sts_adjustment_rh_temp_control);
@@ -442,7 +470,7 @@ void service_control(){
 //      Serial.println("versi fingerprint control = "+fingerprint_control);
       delay(1000);
       Fingerprint=fingerprint_control;
-      if(delay_server_control !="" && sts_adjustment_rh_temp_control !="" && firmware_version_control !="" && fingerprint_control !=""){
+      if(delay_server_control !="" && sts_adjustment_rh_temp_control !="" && firmware_version_control !="" && fingerprint_control !="" && pemilik_ping !=""){
           if (delay_server != delay_server_control){          
             SD.remove("config.txt");  
             delay(1000);  
@@ -455,9 +483,14 @@ void service_control(){
             SD.remove("config.txt");  
             delay(1000);
             update_firmware();
+          }else if(pemilik_ping != pemilik){
+            SD.remove("config.txt");  
+            delay(1000);
+            ESP.restart();             
           }else{        
           }
-      }else{        
+      }else{ 
+        Serial.println("ada data yg kosong");       
       }    
     }  
     yield();
@@ -468,6 +501,7 @@ void service_control(){
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 void service_lcd(){
+  delay(2000);
   String tempp = String(dht.readTemperature()+temp_call);
   char * temp = strdup(tempp.c_str());
   String humm =String(dht.readHumidity()+rh_call);
@@ -476,10 +510,11 @@ void service_lcd(){
     u8g2.clearBuffer();
     u8g2.clearBuffer();
     u8g2.setFont(u8g2_font_logisoso20_tr); // choose a suitable font 42 pixel
-    u8g2.setCursor(2,52);
-    u8g2.print("sensor error....");
+    u8g2.setCursor(0,52);
+    u8g2.print("snr2 err....");
     u8g2.sendBuffer(); 
     delay(1000);
+    Serial.println("snr2 err....");
     ESP.restart();
     
   }else{
@@ -600,6 +635,7 @@ String httpPOSTRequest_post_data(String data){
   else {
     String error = "error request";
     http.end();
+    Serial.println("tulis ke sd error hit");
     tulis_sd_card();   
   }
   http.end();
@@ -651,6 +687,8 @@ void tulis_sd_card(){
   if (myFile) {   
     myFile.println(data);
     myFile.close();
+    Serial.println("save sd = "+data);
+    
     
   } else {
     u8g2.clearBuffer();
