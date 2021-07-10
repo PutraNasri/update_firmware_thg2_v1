@@ -37,12 +37,12 @@ DHT dht(DHTPIN, DHTTYPE);
 #endif
 U8G2_SSD1327_EA_W128128_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);  /* Uno: A4=SDA, A5=SCL, add "u8g2.setBusClock(400000);" into setup() for speedup if possible */
 //////////////////////////////////
-const char* remote_host = "http://otoridashboard.id";
-String get_pemilik = "http://otoridashboard.id/thg2/get_pemilik";
-String get_adjustment_rh_temp = "http://otoridashboard.id/thg2/get_adjustment_rh_temp";
-String get_delay = "http://otoridashboard.id/thg2/get_delay";
-String get_versionfirmware = "http://otoridashboard.id/thg2/versi";
-String post_data = "http://otoridashboard.id/thg2/nulis_data";
+const char* remote_host = "http://wb21.otori.id";
+String get_pemilik = "http://wb21.otori.id/thg2/get_pemilik";
+String get_adjustment_rh_temp = "http://wb21.otori.id/thg2/get_adjustment_rh_temp";
+String get_delay = "http://wb21.otori.id/thg2/get_delay";
+String get_versionfirmware = "http://wb21.otori.id/thg2/versi";
+String post_data = "http://wb21.otori.id/thg2/nulis_data";
 String Fingerprint = "null";
 #define URL_update "https://raw.githubusercontent.com/PutraNasri/update_firmware_thg2_v1/main/THG2_V1/ini.bin"
 HTTPClient http;
@@ -352,9 +352,9 @@ void setup () {
   Thread2.onRun(acpn_mode);
   Thread2.setInterval(500);
   Thread3.onRun(service_control);
-  Thread3.setInterval(90000);
+  Thread3.setInterval(180000);
   Thread4.onRun(service_lcd);
-  Thread4.setInterval(3000);
+  Thread4.setInterval(10000);
   
   delay(2000);
   service();
@@ -372,6 +372,8 @@ void service(){
     if (pemilik_ping ==""){
       Serial.println("ping pemilik gagal");
       tulis_sd_card();
+      delay(1000);
+      ESP.restart(); 
     }else{    
       if(pemilik != ""){
         if(pemilik != "no_id_user" && pemilik != "lock"){
@@ -412,9 +414,6 @@ void service(){
       }else{       
       }  
     } 
-
-
-  
   }else{   
     tulis_sd_card();  
   }
@@ -548,6 +547,7 @@ void service_lcd(){
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////
 String httpPOSTRequest_pemilik(){
+  delay(2000);
   HTTPClient http;
   http.begin(get_pemilik);
   http.addHeader("Content-Type", "application/json");

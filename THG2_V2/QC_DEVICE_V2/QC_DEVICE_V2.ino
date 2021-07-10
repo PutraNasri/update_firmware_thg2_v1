@@ -9,15 +9,14 @@
 #include <WiFiClient.h>
 #include <Arduino_JSON.h>
 #include <WiFiManager.h>
-#include "DHTesp.h"
+#include <OneWire.h>
+#include <DallasTemperature.h>
+#define ONE_WIRE_BUS 0
+OneWire oneWire(ONE_WIRE_BUS);
+DallasTemperature sensorSuhu(&oneWire);
+float suhuSekarang;
 //#include <SPI.h>
 #include <SD.h>
-//DHTesp dht;
-///////////////////////////////////
-#include "DHT.h"
-#define DHTPIN 0
-#define DHTTYPE DHT22
-DHT dht(DHTPIN, DHTTYPE);
 ///////////////////////////////////
 #include <Wire.h>
 #include "RTClib.h"
@@ -49,7 +48,9 @@ void setup() {
     while (!Serial); // for Leonardo/Micro/Zero
   #endif
   Serial.begin(115200);
-  dht.begin();
+  sensorSuhu.begin();
+ 
+  
   u8g2.begin();
   u8g2.clearBuffer();
   u8g2.clearBuffer();
@@ -110,47 +111,41 @@ void loop() {
 }
 
 void service_lcd(){
-  String tempp = String(dht.readTemperature());
+  String tempp = String(getTemp()+00);
+  Serial.println(tempp);
   char * temp = strdup(tempp.c_str());
-  String humm =String(dht.readHumidity());
-  char * hum = strdup(humm.c_str());
-  Serial.println("temp"+tempp);
-  if (tempp == "nan"){
-    u8g2.clearBuffer();
-    u8g2.clearBuffer();
-    u8g2.setFont(u8g2_font_logisoso20_tr); // choose a suitable font 42 pixel
-    u8g2.setCursor(2,52);
-    u8g2.print("sensor error....");
-    u8g2.sendBuffer(); 
-    delay(1000);
-    ESP.restart();
-    
-  }else{
-    u8g2.clearBuffer();          
-  //(yy,xx)
-    u8g2.setFont(u8g2_font_logisoso42_tr);
-    u8g2.setCursor(2,43);
-    char * depan_temp = strtok(temp,".");
-    char * belakang_temp = strtok(NULL,".");
-    char * depan_hum = strtok(hum,".");
-    char * belakang_hum = strtok(NULL,".");
-    u8g2.print(String(depan_temp)+",");     
-    u8g2.setFont(u8g2_font_logisoso20_tr);
-    u8g2.setCursor(98,28);
-    u8g2.print(".");
-    u8g2.setCursor(105,43);
-    u8g2.print("C");
-    u8g2.setCursor(92,20);
-    u8g2.print(belakang_temp);    
-    u8g2.setFont(u8g2_font_logisoso42_tr);
-    u8g2.setCursor(2,95);
-    u8g2.print(String(depan_hum)+",");  
-    u8g2.setFont(u8g2_font_logisoso20_tr);
-    u8g2.setCursor(105,96);
-    u8g2.print("%");
-    u8g2.setCursor(92,74);
-    u8g2.print(belakang_hum);
-    u8g2.sendBuffer();    
-  } 
-  yield(); 
+  
+  
+  char * depan_temp = strtok(temp,".");
+  char * belakang_temp = strtok(NULL,".");
+  
+
+  u8g2.clearBuffer();          // clear the internal memory
+  u8g2.clearBuffer();
+  u8g2.setFont(u8g2_font_logisoso46_tn); // choose a suitable font 42 pixel
+  u8g2.setCursor(2,52);
+  
+  u8g2.print(String(depan_temp+00));
+  
+  u8g2.setFont(u8g2_font_logisoso26_tr); // choose a suitable font 42 pixel
+  u8g2.setCursor(85,25);
+  u8g2.print(","+String(belakang_temp));
+  
+  u8g2.setCursor(100,60);
+  u8g2.print("C");
+
+  u8g2.setFont(u8g2_font_logisoso20_tr);
+  u8g2.setCursor(20,97);
+  u8g2.print("otori.id");
+
+  u8g2.sendBuffer(); 
+
+  yield();
+}
+
+float getTemp(){
+  sensorSuhu.requestTemperatures();
+  float suhu = sensorSuhu.getTempCByIndex(0);
+  return suhu;
+
 }

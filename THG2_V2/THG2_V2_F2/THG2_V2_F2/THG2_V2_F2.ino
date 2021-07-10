@@ -35,6 +35,7 @@ float suhuSekarang;
 #endif
 U8G2_SSD1327_EA_W128128_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);  /* Uno: A4=SDA, A5=SCL, add "u8g2.setBusClock(400000);" into setup() for speedup if possible */
 //////////////////////////////////
+const char* remote_host = "http://otoridashboard.id";
 String get_pemilik = "http://otoridashboard.id/thg2/get_pemilik";
 String get_adjustment_rh_temp = "http://otoridashboard.id/thg2/get_adjustment_rh_temp";
 String get_delay = "http://otoridashboard.id/thg2/get_delay";
@@ -105,14 +106,15 @@ void setup () {
     // This line sets the RTC with an explicit date & time, for example to set
     // January 21, 2014 at 3am you would call:
     // rtc.adjust(DateTime(2014, 1, 21, 3, 0, 0));
-    u8g2.clearBuffer();
-    u8g2.clearBuffer();
-    u8g2.setFont(u8g2_font_logisoso20_tr); // choose a suitable font 42 pixel
-    u8g2.setCursor(2,52);
-    u8g2.print("RTC error....");
-    u8g2.sendBuffer();
-    delay(1000);
-    ESP.restart();
+    
+//    u8g2.clearBuffer();
+//    u8g2.clearBuffer();
+//    u8g2.setFont(u8g2_font_logisoso20_tr); // choose a suitable font 42 pixel
+//    u8g2.setCursor(2,52);
+//    u8g2.print("RTC error....");
+//    u8g2.sendBuffer();
+//    delay(1000);
+//    ESP.restart();
   }
 /////////////////////////////////////////////////////////////////////////////
   while (!Serial) {
@@ -120,51 +122,59 @@ void setup () {
   }
    
   if (!SD.begin(15)) {
-    u8g2.clearBuffer();
-    u8g2.clearBuffer();
-    u8g2.setFont(u8g2_font_logisoso20_tr); // choose a suitable font 42 pixel
-    u8g2.setCursor(2,52);
-    u8g2.print("SD error....");
-    u8g2.sendBuffer(); 
-    delay(1000);
-    ESP.restart();  
+//    u8g2.clearBuffer();
+//    u8g2.clearBuffer();
+//    u8g2.setFont(u8g2_font_logisoso20_tr); // choose a suitable font 42 pixel
+//    u8g2.setCursor(2,52);
+//    u8g2.print("SD error....");
+//    u8g2.sendBuffer(); 
+//    delay(1000);
+//    ESP.restart();  
     while (1);
   }
-   
+  Serial.println("initialization SD done.");
   delay(1000);
 ////////////////////////////////////////////////////////////////////////////////////
   if(SD.exists("id_device.txt")){
     myFile = SD.open("id_device.txt");
     String id_device_sdcard;
     int count=1;
-    if(myFile){
-      
+    if(myFile){    
       while(myFile.available()){
         id_device_sdcard = String(myFile.readStringUntil('\n'));
         id_device_sdcard.trim();       
         id_device = id_device_sdcard;
-        ssid      = id_device.c_str();   
+        ssid      = id_device.c_str(); 
+          
         delay(3000);  
       }
       myFile.close();
+      Serial.println(ssid);
+      //tambahkan print id di lcd 
+      
+      u8g2.setFont(u8g2_font_logisoso16_tr); // choose a suitable font 42 pixel
+      u8g2.setCursor(2,90);
+      u8g2.print(ssid);
+      u8g2.sendBuffer();
+      
     }else{
-      u8g2.clearBuffer();
-      u8g2.clearBuffer();
-      u8g2.setFont(u8g2_font_logisoso20_tr); // choose a suitable font 42 pixel
-      u8g2.setCursor(2,52);
-      u8g2.print("SD2 error....");
-      u8g2.sendBuffer(); 
+//      u8g2.clearBuffer();
+//      u8g2.clearBuffer();
+//      u8g2.setFont(u8g2_font_logisoso20_tr); // choose a suitable font 42 pixel
+//      u8g2.setCursor(2,52);
+//      u8g2.print("SD2 error....");
+//      u8g2.sendBuffer(); 
       delay(1000);     
     }
   }else{
-    u8g2.clearBuffer();
-    u8g2.clearBuffer();
-    u8g2.setFont(u8g2_font_logisoso20_tr); // choose a suitable font 42 pixel
-    u8g2.setCursor(2,52);
-    u8g2.print("ID error....");
-    u8g2.sendBuffer(); 
-    delay(1000);
-    ESP.restart();   
+//    u8g2.clearBuffer();
+//    u8g2.clearBuffer();
+//    u8g2.setFont(u8g2_font_logisoso20_tr); // choose a suitable font 42 pixel
+//    u8g2.setCursor(2,52);
+//    u8g2.print("ID error....");
+//    u8g2.sendBuffer(); 
+//    delay(1000);
+//    ESP.restart();   
   }
 /////////////////////////////////////////////////////////////////////  
 
@@ -209,6 +219,8 @@ void setup () {
       sts_adjustment_rh_temp = adjustment_config;
       delay_server = delay_config;
       pemilik = id_pemilik_config;    
+      Serial.println("setting pemilik ok");   
+      Serial.println("pemilik = "+pemilik);
     }else{      
       u8g2.clearBuffer();
       u8g2.clearBuffer();
@@ -331,16 +343,19 @@ void setup () {
   int delay_server_service = delay_server.toInt();
 
   // panggil service() untuk merecord data pada saat awal start device
-  service();
+//  service();
   delay(2000);
   Thread1.onRun(service);
   Thread1.setInterval(delay_server_service*menit_to_detik*detik_to_milidetik);
   Thread2.onRun(acpn_mode);
   Thread2.setInterval(500);
   Thread3.onRun(service_control);
-  Thread3.setInterval(40000);
+  Thread3.setInterval(180000);
   Thread4.onRun(service_lcd);
-  Thread4.setInterval(2000);
+  Thread4.setInterval(10000);
+
+  delay(2000);
+  service();
 }
 
 void service(){
@@ -350,7 +365,10 @@ void service(){
     pemilik_ping = var_pemilik_ping["pemilik"];
        
     if (pemilik_ping ==""){
-        tulis_sd_card();
+      Serial.println("ping pemilik gagal");
+      tulis_sd_card();
+      delay(1000);
+      ESP.restart(); 
     }else{    
       if(pemilik != ""){
         if(pemilik != "no_id_user" && pemilik != "lock"){
@@ -359,26 +377,28 @@ void service(){
           float temperature = getTemp();
           float h = 00;
 
-          while(!timeClient.update()) {
+          if(String(temperature) == "-127") {
+            service();
+          }else{
+            while(!timeClient.update()) {
             timeClient.forceUpdate();
-          }
-          formattedDate = timeClient.getFormattedDate();
-          int splitT = formattedDate.indexOf("T");
-          dayStamp = formattedDate.substring(0, splitT);
-          timeStamp = formattedDate.substring(splitT+1, formattedDate.length()-1);
-          String data = String(temperature+temp_call)+"@"+String(h+rh_call)+"@"+String(dayStamp)+"@"+String(timeStamp);
-          httpPOSTRequest_post_data(data);      
-           
+            }
+            
+            formattedDate = timeClient.getFormattedDate();
+            int splitT = formattedDate.indexOf("T");
+            dayStamp = formattedDate.substring(0, splitT);
+            timeStamp = formattedDate.substring(splitT+1, formattedDate.length()-1);
+            String data = String(temperature+temp_call)+"@"+String(h+rh_call)+"@"+String(dayStamp)+"@"+String(timeStamp);
+            httpPOSTRequest_post_data(data);
+          }   
+         
         }else if(pemilik=="no_id_user"){
-          sts_server = "0";
-          Serial.println("no_id_user");          
+                   
         }else if(pemilik=="lock"){
-          sts_server = "0";
-          Serial.println("device lock");
           tulis_sd_card();         
-        }         
-      }else{  
-        Serial.println("data pemilik firebase kosong");     
+        }  
+        yield();         
+      }else{ 
       }  
     }   
   }else{   
@@ -435,7 +455,7 @@ void service_control(){
 //      Serial.println("versi fingerprint control = "+fingerprint_control);
       delay(1000);
       Fingerprint=fingerprint_control;
-      if(delay_server_control !="" && sts_adjustment_rh_temp_control !="" && firmware_version_control !="" && fingerprint_control !=""){
+      if(delay_server_control !="" && sts_adjustment_rh_temp_control !="" && firmware_version_control !="" && fingerprint_control !="" && pemilik_ping !=""){
           if (delay_server != delay_server_control){          
             SD.remove("config.txt");  
             delay(1000);  
@@ -448,9 +468,14 @@ void service_control(){
             SD.remove("config.txt");  
             delay(1000);
             update_firmware();
-          }else{        
+          }else if(pemilik_ping != pemilik){
+            SD.remove("config.txt");  
+            delay(1000);
+            ESP.restart();             
+          }else{      
           }
-      }else{        
+      }else{
+        Serial.println("ada data yg kosong");         
       }    
     }  
     yield();
@@ -461,39 +486,66 @@ void service_control(){
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 void service_lcd(){
-  String tempp = String(getTemp()+temp_call);
+  float temppp = getTemp();
+  String tempp = String(temppp+temp_call);
   Serial.println(tempp);
   char * temp = strdup(tempp.c_str());
   
   
   char * depan_temp = strtok(temp,".");
   char * belakang_temp = strtok(NULL,".");
+
+  if(String(temppp) == "-127"){
+    Serial.println("non lcd = "+tempp);
+  }else{
+    Serial.println("lcd = "+tempp);
+    u8g2.clearBuffer();          // clear the internal memory
+    u8g2.clearBuffer();
+    u8g2.setFont(u8g2_font_logisoso46_tn); // choose a suitable font 42 pixel
+    u8g2.setCursor(2,52);
+    
+    u8g2.print(String(depan_temp+00));
+    
+    u8g2.setFont(u8g2_font_logisoso26_tr); // choose a suitable font 42 pixel
+    u8g2.setCursor(85,25);
+    u8g2.print(","+String(belakang_temp));
+    
+    u8g2.setCursor(100,60);
+    u8g2.print("C");
+  
+    u8g2.setFont(u8g2_font_logisoso20_tr);
+    u8g2.setCursor(20,97);
+    u8g2.print("otori.id");
+  
+    u8g2.sendBuffer(); 
+  }
   
 
-  u8g2.clearBuffer();          // clear the internal memory
-  u8g2.clearBuffer();
-  u8g2.setFont(u8g2_font_logisoso46_tn); // choose a suitable font 42 pixel
-  u8g2.setCursor(2,52);
-  
-  u8g2.print(String(depan_temp+00));
-  
-  u8g2.setFont(u8g2_font_logisoso26_tr); // choose a suitable font 42 pixel
-  u8g2.setCursor(85,25);
-  u8g2.print(","+String(belakang_temp));
-  
-  u8g2.setCursor(100,60);
-  u8g2.print("C");
-
-  u8g2.setFont(u8g2_font_logisoso20_tr);
-  u8g2.setCursor(20,97);
-  u8g2.print("otori.id");
-
-  u8g2.sendBuffer(); 
+//  u8g2.clearBuffer();          // clear the internal memory
+//  u8g2.clearBuffer();
+//  u8g2.setFont(u8g2_font_logisoso46_tn); // choose a suitable font 42 pixel
+//  u8g2.setCursor(2,52);
+//  
+//  u8g2.print(String(depan_temp+00));
+//  
+//  u8g2.setFont(u8g2_font_logisoso26_tr); // choose a suitable font 42 pixel
+//  u8g2.setCursor(85,25);
+//  u8g2.print(","+String(belakang_temp));
+//  
+//  u8g2.setCursor(100,60);
+//  u8g2.print("C");
+//
+//  u8g2.setFont(u8g2_font_logisoso20_tr);
+//  u8g2.setCursor(20,97);
+//  u8g2.print("otori.id");
+//
+//  u8g2.sendBuffer(); 
 
   yield();
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////
 String httpPOSTRequest_pemilik(){
+  delay(2000);
   HTTPClient http;
   http.begin(get_pemilik);
   http.addHeader("Content-Type", "application/json");
@@ -581,6 +633,7 @@ String httpPOSTRequest_post_data(String data){
   else {
     String error = "error request";
     http.end();
+    Serial.println("tulis ke sd error hit");
     tulis_sd_card();   
   }
   http.end();
@@ -648,7 +701,7 @@ void tulis_sd_card(){
 void cek_data_sdcard_and_send_to_firebase(){
   if(SD.exists("log.txt")){
     myFile = SD.open("log.txt");
-    String da ta;
+    String data;
     int count =1;
     if(myFile){     
       while(myFile.available()){
@@ -723,6 +776,12 @@ String get_version_firmware(){
   http.end();
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////
+float getTemp(){
+  sensorSuhu.requestTemperatures();
+  float suhu = sensorSuhu.getTempCByIndex(0);
+  return suhu;
+
+}
 ////////////////////////////////////////////////////////////////////////////////////////////////
 void loop() {
   u8g2.clearBuffer();
