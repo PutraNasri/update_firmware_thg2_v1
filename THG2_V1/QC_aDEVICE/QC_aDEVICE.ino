@@ -116,7 +116,7 @@ void service_lcd(){
   char * hum = strdup(humm.c_str());
   Serial.println("temp"+tempp);
   if (tempp == "nan"){
-    u8g2.clearBuffer();
+    u8g2.clearBuffer(); 
     u8g2.clearBuffer();
     u8g2.setFont(u8g2_font_logisoso20_tr); // choose a suitable font 42 pixel
     u8g2.setCursor(2,52);

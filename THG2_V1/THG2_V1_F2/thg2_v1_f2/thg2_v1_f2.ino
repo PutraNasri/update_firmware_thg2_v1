@@ -48,7 +48,7 @@ String Fingerprint = "null";
 HTTPClient http;
 String id_device      = "XXXXXXXX";
 const char* ssid      = "XXXXXXXX";
-String version_firmware = "F1";
+String version_firmware = "F2";
 const char* password = "12345678";
 String sts_server = "0";
 String sts_adjustment_rh_temp = "0@0";
@@ -66,6 +66,7 @@ File myFile;
 String formattedDate;
 String dayStamp;
 String timeStamp;
+String indicator_api_200 = "0";
 extern "C"
 {
   #include <lwip/icmp.h> 
@@ -247,32 +248,34 @@ void setup () {
         u8g2.sendBuffer();
         delay (3000) ;
         ESP.restart();            
-      }else{      
-        timeClient.begin();
-        timeClient.setTimeOffset(25200);       
-        while(!timeClient.update()) {
-            timeClient.forceUpdate();
-        }
-        formattedDate = timeClient.getFormattedDate();
-        int splitT = formattedDate.indexOf("T");
-        dayStamp = formattedDate.substring(0, splitT);
-        timeStamp = formattedDate.substring(splitT+1, formattedDate.length()-1);       
-        
-        char *tahun; 
-        tahun = strtok((char *) dayStamp.c_str(),"-");        
-        char *bulan = strtok(NULL,"-");
-        char *hari = strtok(NULL,"-");
-        char *jam;
-        jam = strtok((char *) timeStamp.c_str(),":");
-        char *menit = strtok(NULL,":");
-        char *detik = strtok(NULL,":");
-        String tahun_str = String(tahun);
-        String bulan_str = String(bulan);
-        String hari_str = String(hari);
-        String jam_str = String(jam);
-        String menit_str = String(menit);
-        String detik_str = String(detik);      
-        rtc.adjust(DateTime(tahun_str.toInt(), bulan_str.toInt(), hari_str.toInt(), jam_str.toInt(), menit_str.toInt(), detik_str.toInt()));
+      }else{ 
+        sinkronisasi_waktu();     
+//        timeClient.begin();
+//        timeClient.setTimeOffset(25200);       
+//        while(!timeClient.update()) {
+//            timeClient.forceUpdate();
+//        }
+//        formattedDate = timeClient.getFormattedDate();
+//        int splitT = formattedDate.indexOf("T");
+//        dayStamp = formattedDate.substring(0, splitT);
+//        timeStamp = formattedDate.substring(splitT+1, formattedDate.length()-1);       
+//        
+//        char *tahun; 
+//        tahun = strtok((char *) dayStamp.c_str(),"-");        
+//        char *bulan = strtok(NULL,"-");
+//        char *hari = strtok(NULL,"-");
+//        char *jam;
+//        jam = strtok((char *) timeStamp.c_str(),":");
+//        char *menit = strtok(NULL,":");
+//        char *detik = strtok(NULL,":");
+//        String tahun_str = String(tahun);
+//        String bulan_str = String(bulan);
+//        String hari_str = String(hari);
+//        String jam_str = String(jam);
+//        String menit_str = String(menit);
+//        String detik_str = String(detik);      
+//        rtc.adjust(DateTime(tahun_str.toInt(), bulan_str.toInt(), hari_str.toInt(), jam_str.toInt(), menit_str.toInt(), detik_str.toInt()));
+
         String pemilik = httpPOSTRequest_pemilik();
         JSONVar var_pemilik = JSON.parse(pemilik);
         pemilik = var_pemilik["pemilik"];       
@@ -373,9 +376,10 @@ void service(){
       Serial.println("ping pemilik gagal");
       tulis_sd_card();
       delay(1000);
-      ESP.restart(); 
+//      ESP.restart(); 
     }else{    
       if(pemilik != ""){
+        cek_data_sdcard_and_send_to_firebase();
         if(pemilik != "no_id_user" && pemilik != "lock"){
           sts_server = "1";
           cek_data_sdcard_and_send_to_firebase();
@@ -488,6 +492,7 @@ void service_control(){
             ESP.restart();             
           }else{        
           }
+          sinkronisasi_waktu();
       }else{ 
         Serial.println("ada data yg kosong");       
       }    
@@ -629,18 +634,51 @@ String httpPOSTRequest_post_data(String data){
 //  Serial.print("HTTP Response data post data: ");
 //  Serial.println(payload); 
   if (body==200){
+    Serial.println("ini data post api = "+data);
     http.end();  
     return payload; 
   }
   else {
     String error = "error request";
     http.end();
-    Serial.println("tulis ke sd error hit");
+    Serial.println("error hit");
     tulis_sd_card();   
   }
   http.end();
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+String httpPOSTRequest_post_data_sd(String data){
+  HTTPClient http;
+  http.begin(post_data);
+  http.addHeader("Content-Type", "application/json");
+  String params = "{\"id\":\""+id_device+"\",\"data\":\""+String(data)+"\"}";
+  Serial.println(params);
+  int body = http.POST(params);
+  String payload = http.getString();
+  
+//  Serial.print("HTTP Response code post data: ");
+//  Serial.println(body);
+  
+//  Serial.print("HTTP Response data post data: ");
+//  Serial.println(payload); 
+  if (body==200){
+    Serial.println("ini data post api = "+data);
+    http.end();  
+    indicator_api_200 = "200";
+    return payload; 
+  }
+  else {
+    String error = "error request";
+    http.end();
+    Serial.println("error hit");
+    tulis_sd_card();   
+    indicator_api_200 = "0";
+  }
+  http.end();
+}
+////////////////////////////////////////////////////////////////////////////////////////////////
+
 void tulis_sd_card(){
   float h = dht.readHumidity();
   float t = dht.readTemperature();  
@@ -684,7 +722,8 @@ void tulis_sd_card(){
   String data = String(t+temp_call)+"@"+String(h+rh_call)+"@"+String(date_rtc)+"@"+String(time_rtc);
   
   myFile = SD.open("log.txt", FILE_WRITE);
-  if (myFile) {   
+  if (myFile) {  
+    Serial.print("Writing to log.txt..."); 
     myFile.println(data);
     myFile.close();
     Serial.println("save sd = "+data);
@@ -699,38 +738,98 @@ void tulis_sd_card(){
     u8g2.sendBuffer(); 
     delay(1000);
     ESP.restart();    
-  }  
+  } 
+
+  myFile = SD.open("log.txt");
+  if (myFile) {
+    Serial.println("log.txt:");
+
+    // read from the file until there's nothing else in it:
+    while (myFile.available()) {
+      Serial.write(myFile.read());
+    }
+    // close the file:
+    myFile.close();
+  } else {
+    // if the file didn't open, print an error:
+    Serial.println("error opening log.txt");
+  }
+  
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////
 void cek_data_sdcard_and_send_to_firebase(){
-  if(SD.exists("log.txt")){
-    myFile = SD.open("log.txt");
-    String data;
-    int count =1;
-    if(myFile){     
-      while(myFile.available()){
-        data = String(myFile.readStringUntil('\n'));
-        data.trim();
-        httpPOSTRequest_post_data(data);        
-        delay(3000);      
-      }
-      myFile.close(); 
-      SD.remove("log.txt");    
+  
+  String pemilik_ping = httpPOSTRequest_pemilik();
+  JSONVar var_pemilik_ping = JSON.parse(pemilik_ping);
+  pemilik_ping = var_pemilik_ping["pemilik"];
+
+   
+  if (pemilik_ping !=""){
+    
+    if(SD.exists("log.txt")){
+      myFile = SD.open("log.txt");
+      String data;
+      int count =1;
+      if(myFile){    
+        while(myFile.available()){
+          data = String(myFile.readStringUntil('\n'));
+          data.trim();
+          Serial.println(data);
+          httpPOSTRequest_post_data(data);    
+          delay(3000);      
+        }
+        
+        myFile.close();
+        SD.remove("log.txt"); 
+        Serial.println("remove log.txt");    
+        
+      }else{
+        u8g2.clearBuffer();
+        u8g2.clearBuffer();
+        u8g2.setFont(u8g2_font_logisoso20_tr); // choose a suitable font 42 pixel
+        u8g2.setCursor(2,52);
+        u8g2.print("log error....");
+        u8g2.sendBuffer(); 
+        delay(1000);
+        ESP.restart();    
+      }   
     }else{
-      u8g2.clearBuffer();
-      u8g2.clearBuffer();
-      u8g2.setFont(u8g2_font_logisoso20_tr); // choose a suitable font 42 pixel
-      u8g2.setCursor(2,52);
-      u8g2.print("log error....");
-      u8g2.sendBuffer(); 
-      delay(1000);
-      ESP.restart();    
-    }   
-  }else{  
+    } 
+    
+  }else{
+    Serial.println("ping pemilik gagal cek data sd card");
   } 
+  
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////
-
+void sinkronisasi_waktu(){
+  while(!timeClient.update()) {
+      timeClient.forceUpdate();
+  }
+  formattedDate = timeClient.getFormattedDate();
+  int splitT = formattedDate.indexOf("T");
+  dayStamp = formattedDate.substring(0, splitT);
+  timeStamp = formattedDate.substring(splitT+1, formattedDate.length()-1);       
+  
+  char *tahun; 
+  tahun = strtok((char *) dayStamp.c_str(),"-");        
+  char *bulan = strtok(NULL,"-");
+  char *hari = strtok(NULL,"-");
+  char *jam;
+  jam = strtok((char *) timeStamp.c_str(),":");
+  char *menit = strtok(NULL,":");
+  char *detik = strtok(NULL,":");
+  String tahun_str = String(tahun);
+  String bulan_str = String(bulan);
+  String hari_str = String(hari);
+  String jam_str = String(jam);
+  String menit_str = String(menit);
+  String detik_str = String(detik);      
+  rtc.adjust(DateTime(tahun_str.toInt(), bulan_str.toInt(), hari_str.toInt(), jam_str.toInt(), menit_str.toInt(), detik_str.toInt()));
+  Serial.println("berhasil singkroninasi");
+  
+}
+//////////////////////////////////////////////////////////////////////////////////////
 void update_firmware(){ 
   u8g2.clearBuffer();          // clear the internal memory
   u8g2.setFont(u8g2_font_logisoso20_tr);
