@@ -2,11 +2,10 @@
 ////author by Putra////
 /////////THG2//////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-void(* service_reset) (void) = 0;
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 #include <Thread.h>
-#include <Pinger.h>
 #include <ESP8266WiFi.h>
+#include <ESP8266Ping.h>
 #include <NTPClient.h>
 #include <WiFiUdp.h>
 #include <DNSServer.h>
@@ -16,7 +15,7 @@ void(* service_reset) (void) = 0;
 #include <WiFiClient.h>
 #include <Arduino_JSON.h>
 #include <WiFiManager.h>
-#include "DHTesp.h"
+//#include "DHTesp.h"
 //#include <SPI.h>
 #include <SD.h>
 //DHTesp dht;
@@ -38,11 +37,12 @@ DHT dht(DHTPIN, DHTTYPE);
 #endif
 U8G2_SSD1327_EA_W128128_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);  /* Uno: A4=SDA, A5=SCL, add "u8g2.setBusClock(400000);" into setup() for speedup if possible */
 //////////////////////////////////
-String get_pemilik = "http://otoridashboard.id/thg2/get_pemilik";
-String get_adjustment_rh_temp = "http://otoridashboard.id/thg2/get_adjustment_rh_temp";
-String get_delay = "http://otoridashboard.id/thg2/get_delay";
-String get_versionfirmware = "http://otoridashboard.id/thg2/versi";
-String post_data = "http://otoridashboard.id/thg2/nulis_data";
+const char* remote_host = "http://wb21.otori.id";
+String get_pemilik = "http://wb21.otori.id/thg2/get_pemilik";
+String get_adjustment_rh_temp = "http://wb21.otori.id/thg2/get_adjustment_rh_temp";
+String get_delay = "http://wb21.otori.id/thg2/get_delay";
+String get_versionfirmware = "http://wb21.otori.id/thg2/versi";
+String post_data = "http://wb21.otori.id/thg2/nulis_data";
 String Fingerprint = "null";
 #define URL_update "https://raw.githubusercontent.com/PutraNasri/update_firmware_thg2_v1/main/THG2_V1/ini.bin"
 HTTPClient http;
@@ -60,18 +60,17 @@ int menit_to_detik = 60;
 int detik_to_milidetik = 1000;
 const int pin_sensor = 0;
 const int btn_acpn = 16;
-String Serial_s = "1"; // "1" activate serial com  or "0" diactivate
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP);
 File myFile;
 String formattedDate;
 String dayStamp;
 String timeStamp;
+String indicator_api_200 = "0";
 extern "C"
 {
   #include <lwip/icmp.h> 
 }
-Pinger pinger;
 Thread Thread1 = Thread();
 Thread Thread2 = Thread();
 Thread Thread3 = Thread();
@@ -82,12 +81,15 @@ Thread Thread4 = Thread();
 RTC_DS1307 rtc;
 char daysOfTheWeek[7][12] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
 
+
 void setup () {
   #ifndef ESP8266
     while (!Serial); // for Leonardo/Micro/Zero
   #endif
   Serial.begin(115200);
+  pinMode(DHTPIN, INPUT);
   dht.begin();
+  
   u8g2.begin();
   u8g2.clearBuffer();
   u8g2.clearBuffer();
@@ -96,38 +98,44 @@ void setup () {
   u8g2.setCursor(2,52);
   u8g2.print("loading....");
   u8g2.sendBuffer(); 
-  if (! rtc.begin()) {   
-    if (Serial_s == "1"){
-      Serial.println("Couldn't find RTC");
-    }
+  if (! rtc.begin()) {  
+//    Serial.println("Couldn't find RTC");    
     while (1);
   }
   if (! rtc.isrunning()) {
-    if (Serial_s == "1"){
-      Serial.println("RTC is NOT running!");
-    }
+   
     // following line sets the RTC to the date & time this sketch was compiled
     rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
     // This line sets the RTC with an explicit date & time, for example to set
     // January 21, 2014 at 3am you would call:
     // rtc.adjust(DateTime(2014, 1, 21, 3, 0, 0));
+    
+//    u8g2.clearBuffer();
+//    u8g2.clearBuffer();
+//    u8g2.setFont(u8g2_font_logisoso20_tr); // choose a suitable font 42 pixel
+//    u8g2.setCursor(2,52);
+//    u8g2.print("RTC error....");
+//    u8g2.sendBuffer();
+//    delay(1000);
+//    ESP.restart();
   }
 /////////////////////////////////////////////////////////////////////////////
   while (!Serial) {
     ; // wait for serial port to connect. Needed for native USB port only
   }
-  if (Serial_s == "1"){
-      Serial.print("Initializing SD card...");
-    }
+  
   if (!SD.begin(15)) {
-    if (Serial_s == "1"){
-      Serial.println("initialization failed!");
-    }
+//    u8g2.clearBuffer();
+//    u8g2.clearBuffer();
+//    u8g2.setFont(u8g2_font_logisoso20_tr); // choose a suitable font 42 pixel
+//    u8g2.setCursor(2,52);
+//    u8g2.print("SD error....");
+//    u8g2.sendBuffer(); 
+//    delay(1000);
+//    ESP.restart();  
     while (1);
   }
-  if (Serial_s == "1"){
-    Serial.println("initialization done.");
-  }
+  Serial.println("initialization SD done.");
   delay(1000);
 ////////////////////////////////////////////////////////////////////////////////////
   if(SD.exists("id_device.txt")){
@@ -135,61 +143,61 @@ void setup () {
     String id_device_sdcard;
     int count=1;
     if(myFile){
-      if (Serial_s == "1"){
-        Serial.println("id_device.txt:");
-      }
       while(myFile.available()){
         id_device_sdcard = String(myFile.readStringUntil('\n'));
-        id_device_sdcard.trim();
-        if (Serial_s == "1"){
-          Serial.println("ini id device di sd card = "+id_device_sdcard);
-        }
+        id_device_sdcard.trim();       
         id_device = id_device_sdcard;
         ssid      = id_device.c_str();   
+        
         delay(3000);  
       }
       myFile.close();
+      Serial.println(ssid);
+      //tambahkan print id di lcd 
+      
+      u8g2.setFont(u8g2_font_logisoso16_tr); // choose a suitable font 42 pixel
+      u8g2.setCursor(2,90);
+      u8g2.print(ssid);
+      u8g2.sendBuffer(); 
+
     }else{
-      if (Serial_s == "1"){
-        Serial.println("error opening test.txt");
-      }
+//      u8g2.clearBuffer();
+//      u8g2.clearBuffer();
+//      u8g2.setFont(u8g2_font_logisoso20_tr); // choose a suitable font 42 pixel
+//      u8g2.setCursor(2,52);
+//      u8g2.print("SD2 error....");
+//      u8g2.sendBuffer(); 
+      delay(1000);     
     }
   }else{
-    if (Serial_s == "1"){
-      Serial.println("data id_device.txt di sdcard kosong");
-    }
+//    u8g2.clearBuffer();
+//    u8g2.clearBuffer();
+//    u8g2.setFont(u8g2_font_logisoso20_tr); // choose a suitable font 42 pixel
+//    u8g2.setCursor(2,52);
+//    u8g2.print("ID error....");
+//    u8g2.sendBuffer(); 
+//    delay(1000);
+//    ESP.restart();   
   }
 /////////////////////////////////////////////////////////////////////  
-  if (Serial_s == "1"){
-  Serial.print("Connecting to ");
-  }
+
   WiFiManager wifiManager;
   wifiManager.setTimeout(60);
   wifiManager.setBreakAfterConfig(true);
   if (!wifiManager.autoConnect(ssid, password)) {
-    if (Serial_s == "1"){
-      Serial.println("failed to connect, we should reset as see if it connects");
-    }
-    if (Serial_s == "1"){
-      Serial.println("pass wifimanager");
-    }
+    
   }
 ////////////////////////////////////////////////////////////////////////  
   timeClient.begin();
   timeClient.setTimeOffset(25200);
 ////////////////////////////////////////////////////////////////
-  if(SD.exists("config.txt")){
-    if (Serial_s == "1"){
-      Serial.println("file sudah ada");
-    }
+  if(SD.exists("config.txt")){   
     myFile = SD.open("config.txt");
     String data_config;
     int count=1;
     String id_pemilik_config,delay_config,adjustment_config,version_config;
     if(myFile){
-      if (Serial_s == "1"){
-        Serial.println("read config.txt: \n");
-      }
+      
       int n = 0;
       while(myFile.available()){
         data_config = String(myFile.readStringUntil('\n'));
@@ -210,140 +218,106 @@ void setup () {
         delay(3000);  
       }
       myFile.close();     
-      if (Serial_s == "1"){
-        Serial.println(id_pemilik_config);
-        Serial.println(delay_config);
-        Serial.println(adjustment_config);
-        Serial.println(version_config);
-      }
+      
       sts_adjustment_rh_temp = adjustment_config;
       delay_server = delay_config;
-      pemilik = id_pemilik_config;    
-    }else{
-      if (Serial_s == "1"){
-        Serial.println("error opening config.txt");
-      }
+      pemilik = id_pemilik_config; 
+      Serial.println("setting pemilik ok");   
+      Serial.println("pemilik = "+pemilik);
+    }else{      
       u8g2.clearBuffer();
       u8g2.clearBuffer();
       u8g2.setFont(u8g2_font_logisoso20_tr); 
       u8g2.setCursor(2,52);
       u8g2.print("error config");
-      u8g2.sendBuffer(); 
+      u8g2.sendBuffer();
+      delay(1000);
+      ESP.restart();
     }   
   }else{ 
-    if(WiFi.status() == WL_CONNECTED){
-      if (Serial_s == "1"){
-        Serial.println("wifi connected");
-      }
+    if(WiFi.status() == WL_CONNECTED){      
       String pemilik_ping = httpPOSTRequest_pemilik();
       JSONVar var_pemilik_ping = JSON.parse(pemilik_ping);
       pemilik_ping = var_pemilik_ping["pemilik"];
-      if (Serial_s == "1"){
-        Serial.println("pemilik_ping = "+pemilik_ping);
-      }
-      if(pemilik_ping ==""){ 
-        if (Serial_s == "1"){ 
-          Serial.println("Error during ping command service.");
-        }
+     
+      if(pemilik_ping ==""){        
         u8g2.clearBuffer();
         u8g2.setFont(u8g2_font_logisoso20_tr); // choose a suitable font 42 pixel
         u8g2.setCursor(2,52);
         u8g2.print("error ping...");
         u8g2.sendBuffer();
         delay (3000) ;
-        service_reset();            
-      }else{
-        if (Serial_s == "1"){
-          Serial.println("connected to server.");
-        }
-        timeClient.begin();
-        timeClient.setTimeOffset(25200);       
-        while(!timeClient.update()) {
-            timeClient.forceUpdate();
-        }
-        formattedDate = timeClient.getFormattedDate();
-        int splitT = formattedDate.indexOf("T");
-        dayStamp = formattedDate.substring(0, splitT);
-        timeStamp = formattedDate.substring(splitT+1, formattedDate.length()-1);
-        if (Serial_s == "1"){
-          Serial.println(dayStamp+" "+timeStamp);
-        }
-        char *tahun; 
-        tahun = strtok((char *) dayStamp.c_str(),"-");        
-        char *bulan = strtok(NULL,"-");
-        char *hari = strtok(NULL,"-");
-        char *jam;
-        jam = strtok((char *) timeStamp.c_str(),":");
-        char *menit = strtok(NULL,":");
-        char *detik = strtok(NULL,":");
-        String tahun_str = String(tahun);
-        String bulan_str = String(bulan);
-        String hari_str = String(hari);
-        String jam_str = String(jam);
-        String menit_str = String(menit);
-        String detik_str = String(detik);      
-        rtc.adjust(DateTime(tahun_str.toInt(), bulan_str.toInt(), hari_str.toInt(), jam_str.toInt(), menit_str.toInt(), detik_str.toInt()));
+        ESP.restart();            
+      }else{ 
+        sinkronisasi_waktu();     
+//        timeClient.begin();
+//        timeClient.setTimeOffset(25200);       
+//        while(!timeClient.update()) {
+//            timeClient.forceUpdate();
+//        }
+//        formattedDate = timeClient.getFormattedDate();
+//        int splitT = formattedDate.indexOf("T");
+//        dayStamp = formattedDate.substring(0, splitT);
+//        timeStamp = formattedDate.substring(splitT+1, formattedDate.length()-1);       
+//        
+//        char *tahun; 
+//        tahun = strtok((char *) dayStamp.c_str(),"-");        
+//        char *bulan = strtok(NULL,"-");
+//        char *hari = strtok(NULL,"-");
+//        char *jam;
+//        jam = strtok((char *) timeStamp.c_str(),":");
+//        char *menit = strtok(NULL,":");
+//        char *detik = strtok(NULL,":");
+//        String tahun_str = String(tahun);
+//        String bulan_str = String(bulan);
+//        String hari_str = String(hari);
+//        String jam_str = String(jam);
+//        String menit_str = String(menit);
+//        String detik_str = String(detik);      
+//        rtc.adjust(DateTime(tahun_str.toInt(), bulan_str.toInt(), hari_str.toInt(), jam_str.toInt(), menit_str.toInt(), detik_str.toInt()));
+
         String pemilik = httpPOSTRequest_pemilik();
         JSONVar var_pemilik = JSON.parse(pemilik);
-        pemilik = var_pemilik["pemilik"];
-        if (Serial_s == "1"){
-          Serial.println("pemilik = "+pemilik);
-        }
+        pemilik = var_pemilik["pemilik"];       
+       
         delay(1000);
         String delay_server_control = httpPOSTRequest_delay();
         JSONVar var_delay_control = JSON.parse(delay_server_control);
         delay_server_control = var_delay_control["delay"];
-        if (Serial_s == "1"){
-          Serial.println("delay server = "+delay_server_control);
-        }
+               
         delay(1000);
         String sts_adjustment_rh_temp_control = httpPOSTRequest_adjustment_rh_temp();
         JSONVar var_adjustment_rh_temp_control =JSON.parse(sts_adjustment_rh_temp_control);
         sts_adjustment_rh_temp_control = var_adjustment_rh_temp_control["adjustment_rh_temp"];
-        if (Serial_s == "1"){
-          Serial.println("adjustment server = "+sts_adjustment_rh_temp_control);
-        }
+             
         delay(1000);
         String firmware_version_control = get_version_firmware();
         JSONVar var_firmware_version = JSON.parse(firmware_version_control);
         firmware_version_control = var_firmware_version["versi_firmware"];
-        if (Serial_s == "1"){
-          Serial.println("versi firmware server = "+firmware_version_control);
-        }
+             
         delay(1000);
-        if (Serial_s == "1"){
-          Serial.println("menulis config to sdcard");
-        }        
+
         if(pemilik == ""){
-          service_reset();
+          ESP.restart(); 
         }
         if(delay_server_control == ""){
-          service_reset();  
+          ESP.restart(); 
         }
         if(sts_adjustment_rh_temp_control == ""){
-          service_reset();
+          ESP.restart(); 
         }
         if(firmware_version_control == ""){
-          service_reset();
+          ESP.restart();  
         }       
         myFile = SD.open("config.txt", FILE_WRITE);
         if(myFile){
-          if (Serial_s == "1"){
-            Serial.print("Writing to id_device.txt...");
-          }
           myFile.println(pemilik);
           myFile.println(delay_server_control);
           myFile.println(sts_adjustment_rh_temp_control);
           myFile.println(firmware_version_control);
           myFile.close();
-          if (Serial_s == "1"){
-            Serial.println("done set config.");  
-          } 
-          service_reset(); 
-        }else{
-          if (Serial_s == "1"){
-            Serial.println("error menulis config.txt");
-          }
+          ESP.restart(); 
+        }else{          
           u8g2.clearBuffer();
           u8g2.clearBuffer();
           u8g2.setFont(u8g2_font_logisoso20_tr); // choose a suitable font 42 pixel
@@ -351,96 +325,101 @@ void setup () {
           u8g2.print("error w config");
           u8g2.sendBuffer();
           delay (3000) ;
-          service_reset();   
+          ESP.restart(); 
         } 
       }
-    }else{
-      if (Serial_s == "1"){
-        Serial.println("wifi not connected");
-      }
+    }else{    
       u8g2.clearBuffer();
       u8g2.clearBuffer();
       u8g2.setFont(u8g2_font_logisoso20_tr); // choose a suitable font 42 pixel
       u8g2.setCursor(2,52);
       u8g2.print("need wifi..");
       u8g2.sendBuffer();
-      delay (3000) ;
-      service_reset();  
+      delay (3000) ; 
+      ESP.restart(); 
     }   
   }
   char *sts_adjustment_rh_tempp = strdup(sts_adjustment_rh_temp.c_str());
   char * rh = strtok(sts_adjustment_rh_tempp,"@");
   char * temp = strtok(NULL,"@");
-//  rh_call=atoi(rh);
-//  temp_call=atoi(temp);
   rh_call=atof(rh);
   temp_call=atof(temp); 
-  if (Serial_s == "1"){
-    Serial.println (rh_call);
-    Serial.println (temp_call);
-    Serial.println("device ready "+version_firmware);
-  }
+
   int delay_server_service = delay_server.toInt();
+
+  // panggil service() untuk merecord data pada saat awal start device
+//  service();
+  delay(2000);
   Thread1.onRun(service);
   Thread1.setInterval(delay_server_service*menit_to_detik*detik_to_milidetik);
   Thread2.onRun(acpn_mode);
   Thread2.setInterval(500);
   Thread3.onRun(service_control);
-  Thread3.setInterval(30000);
+  Thread3.setInterval(180000);
   Thread4.onRun(service_lcd);
-  Thread4.setInterval(2000);
+  Thread4.setInterval(10000);
+  
+  delay(2000);
+//  cek_data_sdcard_and_send_to_firebase();
+//  service();
 }
 
+
 void service(){
-  if(WiFi.status() == WL_CONNECTED){     
+  if(WiFi.status() == WL_CONNECTED){  
+//    delay(2000);   
     String pemilik_ping = httpPOSTRequest_pemilik();
     JSONVar var_pemilik_ping = JSON.parse(pemilik_ping);
     pemilik_ping = var_pemilik_ping["pemilik"];
-    if (Serial_s == "1"){
-      Serial.println("pemilik_ping = "+pemilik_ping);
-    }
+
+     
     if (pemilik_ping ==""){
-        tulis_sd_card();
-        //tulis ke sd card
-    }else{
-      if (Serial_s == "1"){
-        Serial.println("connected.");
-        Serial.println(pemilik);
-      }
+      Serial.println("ping pemilik gagal");
+      tulis_sd_card();
+      delay(1000);
+//      ESP.restart(); 
+    }else{    
       if(pemilik != ""){
+        cek_data_sdcard_and_send_to_firebase();
         if(pemilik != "no_id_user" && pemilik != "lock"){
           sts_server = "1";
           cek_data_sdcard_and_send_to_firebase();
           float h = dht.readHumidity();
           float t = dht.readTemperature();
-          while(!timeClient.update()) {
+
+          if(String(h)=="nan"){
+            u8g2.clearBuffer();
+            u8g2.clearBuffer();
+            u8g2.setFont(u8g2_font_logisoso20_tr); // choose a suitable font 42 pixel
+            u8g2.setCursor(0,52);
+            u8g2.print("snr1 err ....");
+            u8g2.sendBuffer(); 
+            Serial.println("snr1 err....");
+            digitalWrite(DHTPIN,LOW);
+            delay(1000);
+            ESP.restart();
+          }else{
+            while(!timeClient.update()){
             timeClient.forceUpdate();
-          }
-          formattedDate = timeClient.getFormattedDate();
-          int splitT = formattedDate.indexOf("T");
-          dayStamp = formattedDate.substring(0, splitT);
-          timeStamp = formattedDate.substring(splitT+1, formattedDate.length()-1);
-          String data = String(t+temp_call)+"@"+String(h+rh_call)+"@"+String(dayStamp)+"@"+String(timeStamp);
-          httpPOSTRequest_post_data(data);  
+            }
+            formattedDate = timeClient.getFormattedDate();
+            int splitT = formattedDate.indexOf("T");
+            dayStamp = formattedDate.substring(0, splitT);
+            timeStamp = formattedDate.substring(splitT+1, formattedDate.length()-1);
+            String data = String(t+temp_call)+"@"+String(h+rh_call)+"@"+String(dayStamp)+"@"+String(timeStamp);
+            httpPOSTRequest_post_data(data); 
+          }     
+           
         }else if(pemilik=="no_id_user"){
-          if (Serial_s == "1"){
-            Serial.println("no_id_user");
-          }
+          
         }else if(pemilik=="lock"){
-          if (Serial_s == "1"){
-            Serial.println("device lock");
-          }
-        }         
-      }else{
-        if (Serial_s == "1"){
-          Serial.println("data pemilik firebase kosong");
+          tulis_sd_card();         
         }
+        yield();         
+      }else{       
       }  
-    }   
-  }else{
-    if (Serial_s == "1"){
-      Serial.println("wifi not connected");
-    }
+    } 
+  }else{   
     tulis_sd_card();  
   }
   yield();
@@ -454,9 +433,6 @@ void acpn_mode(){
       u8g2.print("REST");
       u8g2.sendBuffer(); 
       WiFiManager wifiManager;
-      if (Serial_s == "1"){
-        Serial.println("ACPN MODE");
-      }     
       wifiManager.resetSettings();
       wifiManager.setTimeout(60);
       wifiManager.setBreakAfterConfig(true);  
@@ -468,19 +444,19 @@ void acpn_mode(){
 void service_control(){
   if(WiFi.status() == WL_CONNECTED){
     delay(1000);
-    if(pinger.Ping("otoridashboard.id") == false){
-      if (Serial_s == "1"){
-        Serial.println("Error during ping command service_control.");
-      }
+    
+    String pemilik_ping = httpPOSTRequest_pemilik();
+    JSONVar var_pemilik_ping = JSON.parse(pemilik_ping);
+    pemilik_ping = var_pemilik_ping["pemilik"];
+    
+    if(pemilik_ping ==""){     
       sts_server = "0"; 
-    }else{
-      if (Serial_s == "1"){
-        Serial.println("cek service control");
-      }
+//      ESP.restart(); 
+    }else{      
       String delay_server_control = httpPOSTRequest_delay();
       JSONVar var_delay_control = JSON.parse(delay_server_control);
       delay_server_control = var_delay_control["delay"];
-//      Serial.println("delay control = "+delay_server);
+      Serial.println("delay control = "+delay_server);
       delay(1000);     
       String sts_adjustment_rh_temp_control = httpPOSTRequest_adjustment_rh_temp();
       JSONVar var_adjustment_rh_temp_control =JSON.parse(sts_adjustment_rh_temp_control);
@@ -498,60 +474,54 @@ void service_control(){
 //      Serial.println("versi fingerprint control = "+fingerprint_control);
       delay(1000);
       Fingerprint=fingerprint_control;
-      if(delay_server_control !="" && sts_adjustment_rh_temp_control !="" && firmware_version_control !="" && fingerprint_control !=""){
-          if (delay_server != delay_server_control){
-            if (Serial_s == "1"){
-              Serial.println("reset by delay");
-            }
+      if(delay_server_control !="" && sts_adjustment_rh_temp_control !="" && firmware_version_control !="" && fingerprint_control !="" && pemilik_ping !=""){
+          if (delay_server != delay_server_control){          
             SD.remove("config.txt");  
             delay(1000);  
-            service_reset();
-          }else if(sts_adjustment_rh_temp != sts_adjustment_rh_temp_control){
-            if (Serial_s == "1"){
-              Serial.println("reset by adjust");
-            }
+            ESP.restart(); 
+          }else if(sts_adjustment_rh_temp != sts_adjustment_rh_temp_control){           
             SD.remove("config.txt");  
             delay(1000);
-            service_reset();
+            ESP.restart(); 
           }else if(firmware_version_control != version_firmware){
-            if (Serial_s == "1"){
-              Serial.println("update firmware");
-            }
             SD.remove("config.txt");  
             delay(1000);
             update_firmware();
-          }else{
-            if (Serial_s == "1"){
-              Serial.println("passs data ada");
-              Serial.println("delay = "+delay_server);
-              Serial.println("adjust = "+sts_adjustment_rh_temp);
-              Serial.println("version = "+version_firmware);
-              Serial.println("pemilik = "+pemilik);
-            }
+          }else if(pemilik_ping != pemilik){
+            SD.remove("config.txt");  
+            delay(1000);
+            ESP.restart();             
+          }else{        
           }
-      }else{
-        if (Serial_s == "1"){
-          Serial.println("delay_server_control = "+delay_server_control+"sts_adjustment_rh_temp_control = "+sts_adjustment_rh_temp_control+"fingerprint_control = "+fingerprint_control);
-        }
+          sinkronisasi_waktu();
+      }else{ 
+        Serial.println("ada data yg kosong");       
       }    
     }  
     yield();
 
-  }else if (WiFi.status() != WL_CONNECTED){
-    if (Serial_s == "1"){
-      Serial.println("error wifi pass");
-    }
+  }else if (WiFi.status() != WL_CONNECTED){   
   }
   yield();
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 void service_lcd(){
+  delay(2000);
   String tempp = String(dht.readTemperature()+temp_call);
   char * temp = strdup(tempp.c_str());
   String humm =String(dht.readHumidity()+rh_call);
   char * hum = strdup(humm.c_str());
   if (tempp == "nan"){
-    service_reset();
+    u8g2.clearBuffer();
+    u8g2.clearBuffer();
+    u8g2.setFont(u8g2_font_logisoso20_tr); // choose a suitable font 42 pixel
+    u8g2.setCursor(0,52);
+    u8g2.print("snr2 err....");
+    u8g2.sendBuffer(); 
+    delay(1000);
+    Serial.println("snr2 err....");
+    ESP.restart();
+    
   }else{
     u8g2.clearBuffer();          
   //(yy,xx)
@@ -583,26 +553,24 @@ void service_lcd(){
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////
 String httpPOSTRequest_pemilik(){
+  delay(2000);
   HTTPClient http;
   http.begin(get_pemilik);
   http.addHeader("Content-Type", "application/json");
   int body = http.POST("{\n\t\"id\":\"" + id_device + "\"\n}");
   String payload = http.getString();
-  if (Serial_s == "1"){
-    Serial.print("HTTP Response code pemilik: ");
-    Serial.println(body);
-  }
+  
+//  Serial.print("HTTP Response code pemilik: ");
+//  Serial.println(body);
+  
 //  Serial.print("HTTP Response data pemilik: ");
 //  Serial.println(payload);
   if (body==200){
+    http.end();
     return payload;
   }
   else {
-    String error = "error request";
-    if (Serial_s == "1"){
-      Serial.println("error request pemilik");
-    }
-    return String(error);   
+    http.end(); 
   }
   http.end();
 }
@@ -613,21 +581,18 @@ String httpPOSTRequest_delay(){
   http.addHeader("Content-Type", "application/json");
   int body = http.POST("{\n\t\"id\":\"" + id_device + "\"\n}");
   String payload = http.getString();
-  if (Serial_s == "1"){
-    Serial.print("HTTP Response code delay: ");
-    Serial.println(body);
-  }
+  
+//  Serial.print("HTTP Response code delay: ");
+//  Serial.println(body);
+  
 //  Serial.print("HTTP Response data delay: ");
 //  Serial.println(payload);
   if (body==200){
-    return payload;
+    http.end();
+    return payload;  
   }
   else {
-    String error = "error request";
-    if (Serial_s == "1"){
-      Serial.println("error request delay");
-    }
-    return String(error);    
+    http.end();   
   }
   http.end();
 }
@@ -638,24 +603,21 @@ String httpPOSTRequest_adjustment_rh_temp(){
   http.addHeader("Content-Type", "application/json");
   int body = http.POST("{\n\t\"id\":\"" + id_device + "\"\n}");
   String payload = http.getString();
-  if (Serial_s == "1"){
-    Serial.print("HTTP Response code adjustment: ");
-    Serial.println(body);
-  }
+  
+//  Serial.print("HTTP Response code adjustment: ");
+//  Serial.println(body);
+  
 //  Serial.print("HTTP Response data adjustment: ");
 //  Serial.println(payload);  
   if (body==200){
+    http.end(); 
     return payload;
   }
   else {
     String error = "error request";
-    if (Serial_s == "1"){
-      Serial.println("error request adjust");
-    }
-    return String(error);    
+    http.end();     
   }
   http.end(); 
-//  return payload; 
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////
 String httpPOSTRequest_post_data(String data){
@@ -666,26 +628,60 @@ String httpPOSTRequest_post_data(String data){
   Serial.println(params);
   int body = http.POST(params);
   String payload = http.getString();
-  if (Serial_s == "1"){
-    Serial.print("HTTP Response code post data: ");
-    Serial.println(body);
-  }
+  
+//  Serial.print("HTTP Response code post data: ");
+//  Serial.println(body);
+  
 //  Serial.print("HTTP Response data post data: ");
 //  Serial.println(payload); 
   if (body==200){
-    return payload;
+    Serial.println("ini data post api = "+data);
+    http.end();  
+    return payload; 
   }
   else {
     String error = "error request";
-    if (Serial_s == "1"){
-      Serial.println("error");
-    }
-    tulis_sd_card();
-    return String(error);   
+    http.end();
+    Serial.println("error hit");
+    tulis_sd_card(); 
+    delay(1000);
+    ESP.restart();   
   }
   http.end();
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+String httpPOSTRequest_post_data_sd(String data){
+  HTTPClient http;
+  http.begin(post_data);
+  http.addHeader("Content-Type", "application/json");
+  String params = "{\"id\":\""+id_device+"\",\"data\":\""+String(data)+"\"}";
+  Serial.println(params);
+  int body = http.POST(params);
+  String payload = http.getString();
+  
+//  Serial.print("HTTP Response code post data: ");
+//  Serial.println(body);
+  
+//  Serial.print("HTTP Response data post data: ");
+//  Serial.println(payload); 
+  if (body==200){
+    Serial.println("ini data post api = "+data);
+    http.end();  
+    indicator_api_200 = "200";
+    return payload; 
+  }
+  else {
+    String error = "error request";
+    http.end();
+    Serial.println("error hit");
+    tulis_sd_card();   
+    indicator_api_200 = "0";
+  }
+  http.end();
+}
+////////////////////////////////////////////////////////////////////////////////////////////////
+
 void tulis_sd_card(){
   float h = dht.readHumidity();
   float t = dht.readTemperature();  
@@ -727,67 +723,117 @@ void tulis_sd_card(){
   String date_rtc = String(now.year(),DEC) + "-" + month_now + "-" + day_now;
   String time_rtc = hour_now + ":" + minute_now + ":" + second_now;   
   String data = String(t+temp_call)+"@"+String(h+rh_call)+"@"+String(date_rtc)+"@"+String(time_rtc);
-  if (Serial_s == "1"){
-    Serial.println ("simpan data = "+data);
-  }
-  //////////////////////////////////////////////////////////////////////////
-  if (Serial_s == "1"){
-    Serial.println("menulis sdcard");
-  }
+  
   myFile = SD.open("log.txt", FILE_WRITE);
-  if (myFile) {
-    if (Serial_s == "1"){
-      Serial.print("Writing to log.txt...");
-    }
+  if (myFile) {  
+    Serial.print("Writing to log.txt..."); 
     myFile.println(data);
     myFile.close();
-    if (Serial_s == "1"){
-      Serial.println("done.");
-    }
+    Serial.println("save sd = "+data);
+    
+    
   } else {
-    if (Serial_s == "1"){
-      Serial.println("error opening log.txt");
-    }
-  }  
+    u8g2.clearBuffer();
+    u8g2.clearBuffer();
+    u8g2.setFont(u8g2_font_logisoso20_tr); // choose a suitable font 42 pixel
+    u8g2.setCursor(2,52);
+    u8g2.print("log error....");
+    u8g2.sendBuffer(); 
+    delay(1000);
+    ESP.restart();    
+  } 
+
+//  myFile = SD.open("log.txt");
+//  if (myFile) {
+//    Serial.println("log.txt:");
+//
+//    // read from the file until there's nothing else in it:
+//    while (myFile.available()) {
+//      Serial.write(myFile.read());
+//    }
+//    // close the file:
+//    myFile.close();
+//  } else {
+//    // if the file didn't open, print an error:
+//    Serial.println("error opening log.txt");
+//  }
+  
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////
 void cek_data_sdcard_and_send_to_firebase(){
-  if(SD.exists("log.txt")){
-    myFile = SD.open("log.txt");
-    String data;
-    int count =1;
-    if(myFile){
-      if (Serial_s == "1"){
-        Serial.println("file log.txt ada ");
-      }
-      while(myFile.available()){
-        data = String(myFile.readStringUntil('\n'));
-        data.trim();
-        httpPOSTRequest_post_data(data);
-        if (Serial_s == "1"){
-          Serial.println("ini datasd = "+data);
+  
+  String pemilik_ping = httpPOSTRequest_pemilik();
+  JSONVar var_pemilik_ping = JSON.parse(pemilik_ping);
+  pemilik_ping = var_pemilik_ping["pemilik"];
+
+   
+  if (pemilik_ping !=""){
+    
+    if(SD.exists("log.txt")){
+      myFile = SD.open("log.txt");
+      String data;
+      int count =1;
+      if(myFile){    
+        while(myFile.available()){
+          data = String(myFile.readStringUntil('\n'));
+          data.trim();
+          Serial.println(data);
+          httpPOSTRequest_post_data(data);    
+          delay(3000);      
         }
-        delay(3000);      
-      }
-      myFile.close(); 
-      SD.remove("log.txt");    
+        
+        myFile.close();
+        SD.remove("log.txt"); 
+        Serial.println("remove log.txt");    
+        
+      }else{
+        u8g2.clearBuffer();
+        u8g2.clearBuffer();
+        u8g2.setFont(u8g2_font_logisoso20_tr); // choose a suitable font 42 pixel
+        u8g2.setCursor(2,52);
+        u8g2.print("log error....");
+        u8g2.sendBuffer(); 
+        delay(1000);
+        ESP.restart();    
+      }   
     }else{
-      if (Serial_s == "1"){
-        Serial.println("error opening test.txt");
-      }
-    }   
+    } 
+    
   }else{
-    if (Serial_s == "1"){
-      Serial.println("data sd kosong");
-    }
+    Serial.println("ping pemilik gagal cek data sd card");
   } 
+  
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////
-
-void update_firmware(){
-  if (Serial_s == "1"){
-    Serial.println("Download and flash new firmware.....");
-  } 
+void sinkronisasi_waktu(){
+  while(!timeClient.update()) {
+      timeClient.forceUpdate();
+  }
+  formattedDate = timeClient.getFormattedDate();
+  int splitT = formattedDate.indexOf("T");
+  dayStamp = formattedDate.substring(0, splitT);
+  timeStamp = formattedDate.substring(splitT+1, formattedDate.length()-1);       
+  
+  char *tahun; 
+  tahun = strtok((char *) dayStamp.c_str(),"-");        
+  char *bulan = strtok(NULL,"-");
+  char *hari = strtok(NULL,"-");
+  char *jam;
+  jam = strtok((char *) timeStamp.c_str(),":");
+  char *menit = strtok(NULL,":");
+  char *detik = strtok(NULL,":");
+  String tahun_str = String(tahun);
+  String bulan_str = String(bulan);
+  String hari_str = String(hari);
+  String jam_str = String(jam);
+  String menit_str = String(menit);
+  String detik_str = String(detik);      
+  rtc.adjust(DateTime(tahun_str.toInt(), bulan_str.toInt(), hari_str.toInt(), jam_str.toInt(), menit_str.toInt(), detik_str.toInt()));
+  Serial.println("berhasil singkroninasi");
+  
+}
+//////////////////////////////////////////////////////////////////////////////////////
+void update_firmware(){ 
   u8g2.clearBuffer();          // clear the internal memory
   u8g2.setFont(u8g2_font_logisoso20_tr);
   u8g2.setCursor(2,30);
@@ -800,21 +846,15 @@ void update_firmware(){
   ESPhttpUpdate.setLedPin(LED_BUILTIN, LOW);
   t_httpUpdate_return ret = ESPhttpUpdate.update(URL_update,"",Fingerprint);
   switch (ret) {
-    case HTTP_UPDATE_FAILED:
-        if (Serial_s == "1"){
-          Serial.printf("HTTP_UPDATE_FAILD Error (%d): %s\n", ESPhttpUpdate.getLastError(), ESPhttpUpdate.getLastErrorString().c_str());
-        }      
-        service_reset();
+    case HTTP_UPDATE_FAILED:       
+        Serial.printf("HTTP_UPDATE_FAILD Error (%d): %s\n", ESPhttpUpdate.getLastError(), ESPhttpUpdate.getLastErrorString().c_str());
+        ESP.restart(); 
         break;
-    case HTTP_UPDATE_NO_UPDATES:
-      if (Serial_s == "1"){
-        Serial.println("HTTP_UPDATE_NO_UPDATES");
-      }
+    case HTTP_UPDATE_NO_UPDATES:      
+      Serial.println("HTTP_UPDATE_NO_UPDATES");   
       break;
-    case HTTP_UPDATE_OK:
-      if (Serial_s == "1"){
-        Serial.println("HTTP_UPDATE_OK");
-      }
+    case HTTP_UPDATE_OK:   
+      Serial.println("HTTP_UPDATE_OK");    
       break;
   }
   yield();
@@ -825,21 +865,20 @@ String get_version_firmware(){
   http.addHeader("Content-Type", "application/json");
   int body = http.POST("{\n\t\"id\":\"" + id_device + "\"\n}");
   String payload = http.getString();
-  if (Serial_s == "1"){
-    Serial.print("HTTP Response version firmware: ");
-    Serial.println(body);
-  }
+  
+//  Serial.print("HTTP Response version firmware: ");
+//  Serial.println(body);
+  
 //  Serial.print("HTTP Response data delay: ");
 //  Serial.println(payload);  
   if (body==200){
+    http.end();
     return payload;
   }
   else {
-    String error = "error request";
-    if (Serial_s == "1"){
-      Serial.println("error request firmware");
-    }
-    return String(error);   
+    String error = "error request"; 
+    http.end(); 
+//    ESP.restart(); 
   }
   http.end();
 }
