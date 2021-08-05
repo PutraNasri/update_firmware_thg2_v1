@@ -360,7 +360,12 @@ void setup () {
   Thread4.setInterval(10000);
   
   delay(2000);
+<<<<<<< HEAD
   service();
+=======
+//  cek_data_sdcard_and_send_to_firebase();
+//  service();
+>>>>>>> main
 }
 
 
@@ -637,6 +642,7 @@ String httpPOSTRequest_post_data(String data){
     Serial.println("ini data post api = "+data);
     http.end();  
     return payload; 
+<<<<<<< HEAD
   }
   else {
     String error = "error request";
@@ -644,6 +650,17 @@ String httpPOSTRequest_post_data(String data){
     Serial.println("error hit");
     tulis_sd_card();   
   }
+=======
+  }
+  else {
+    String error = "error request";
+    http.end();
+    Serial.println("error hit");
+    tulis_sd_card(); 
+    delay(1000);
+    ESP.restart();   
+  }
+>>>>>>> main
   http.end();
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -740,6 +757,7 @@ void tulis_sd_card(){
     ESP.restart();    
   } 
 
+<<<<<<< HEAD
   myFile = SD.open("log.txt");
   if (myFile) {
     Serial.println("log.txt:");
@@ -754,6 +772,22 @@ void tulis_sd_card(){
     // if the file didn't open, print an error:
     Serial.println("error opening log.txt");
   }
+=======
+//  myFile = SD.open("log.txt");
+//  if (myFile) {
+//    Serial.println("log.txt:");
+//
+//    // read from the file until there's nothing else in it:
+//    while (myFile.available()) {
+//      Serial.write(myFile.read());
+//    }
+//    // close the file:
+//    myFile.close();
+//  } else {
+//    // if the file didn't open, print an error:
+//    Serial.println("error opening log.txt");
+//  }
+>>>>>>> main
   
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -874,7 +908,12 @@ String get_version_firmware(){
   }
   else {
     String error = "error request"; 
+<<<<<<< HEAD
     http.end();  
+=======
+    http.end(); 
+//    ESP.restart(); 
+>>>>>>> main
   }
   http.end();
 }
