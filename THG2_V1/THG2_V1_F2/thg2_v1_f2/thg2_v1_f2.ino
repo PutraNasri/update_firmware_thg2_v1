@@ -227,14 +227,14 @@ void setup () {
     }else{      
       u8g2.clearBuffer();
       u8g2.clearBuffer();
-      u8g2.setFont(u8g2_font_logisoso20_tr); 
+      u8g2.setFont(u8g2_font_logisoso20_tr);
       u8g2.setCursor(2,52);
       u8g2.print("error config");
       u8g2.sendBuffer();
       delay(1000);
       ESP.restart();
-    }   
-  }else{ 
+    }
+  }else{
     if(WiFi.status() == WL_CONNECTED){      
       String pemilik_ping = httpPOSTRequest_pemilik();
       JSONVar var_pemilik_ping = JSON.parse(pemilik_ping);

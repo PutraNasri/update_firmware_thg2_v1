@@ -1,14 +1,5 @@
 #include <Thread.h>
 #include <ESP8266WiFi.h>
-#include <NTPClient.h>
-#include <WiFiUdp.h>
-#include <DNSServer.h>
-#include <ESP8266WebServer.h>
-#include <ESP8266HTTPClient.h>
-#include <ESP8266httpUpdate.h>
-#include <WiFiClient.h>
-#include <Arduino_JSON.h>
-#include <WiFiManager.h>
 #include "DHTesp.h"
 //#include <SPI.h>
 #include <SD.h>
@@ -30,7 +21,28 @@ DHT dht(DHTPIN, DHTTYPE);
 #include <Wire.h>
 #endif
 U8G2_SSD1327_EA_W128128_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);  /* Uno: A4=SDA, A5=SCL, add "u8g2.setBusClock(400000);" into setup() for speedup if possible */
-//////////////////////////////////
+
+
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////bagian yang harus di sesuaikan////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////
+String id_device      = "PHA43541";  /////////////////////////////////////////////////////////////////
+const char* ssid      = "PHA43541";  /////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////
+
 extern "C"
 {
   #include <lwip/icmp.h> 
@@ -58,6 +70,7 @@ void setup() {
   u8g2.setCursor(2,52);
   u8g2.print("loading....");
   u8g2.sendBuffer(); 
+  delay(2000);
   if (! rtc.begin()) {
 //    Serial.println("Couldn't find RTC");    
     while (1);
@@ -70,33 +83,70 @@ void setup() {
     // This line sets the RTC with an explicit date & time, for example to set
     // January 21, 2014 at 3am you would call:
     // rtc.adjust(DateTime(2014, 1, 21, 3, 0, 0));
-    Serial.println("RTC ERROR");
-    delay(1000);
-//    ESP.restart();
+//    Serial.println("RTC ERROR");
+    u8g2.clearBuffer();
+    u8g2.setFont(u8g2_font_logisoso20_tr); // choose a suitable font 42 pixel
+    u8g2.setCursor(2,52);
+    u8g2.print("RTC ERR");
+    u8g2.sendBuffer(); 
+    delay(2000);
+    ESP.restart();
   }
 
-  Serial.println("RTC OK");
- 
+//  Serial.println("RTC OK");
+  u8g2.clearBuffer();
+  u8g2.setFont(u8g2_font_logisoso20_tr); // choose a suitable font 42 pixel
+  u8g2.setCursor(2,52);
+  u8g2.print("RTC OK");
+  u8g2.sendBuffer(); 
+  delay(2000);
  
   while (!Serial) {
     ; // wait for serial port to connect. Needed for native USB port only
   }
   
   if (!SD.begin(15)) {
-    Serial.println("SD ERROR");
+//    Serial.println("SD ERROR");
+    u8g2.clearBuffer();
+    u8g2.setFont(u8g2_font_logisoso20_tr); // choose a suitable font 42 pixel
+    u8g2.setCursor(2,52);
+    u8g2.print("SD ERR");
+    u8g2.sendBuffer(); 
+    delay(2000);
+    ESP.restart();
   }else{
-    Serial.println("SD OK");
+//    Serial.println("SD OK");
+    u8g2.clearBuffer();
+    u8g2.setFont(u8g2_font_logisoso20_tr); // choose a suitable font 42 pixel
+    u8g2.setCursor(2,52);
+    u8g2.print("SD OK");
+    u8g2.sendBuffer(); 
+    delay(2000);
   }
   
-   delay(1000);
+   delay(2000);
 
   if(SD.exists("id_device.txt")){
+//    Serial.println("baca ok");
+    u8g2.clearBuffer();
+    u8g2.setFont(u8g2_font_logisoso20_tr); // choose a suitable font 42 pixel
+    u8g2.setCursor(2,52);
+    u8g2.print("READ OK");
+    u8g2.sendBuffer(); 
+    delay(5000);
+//    ESP.restart(); 
+    service_sensor();  
     
   }else{
-    Serial.println("baca ok");
-    service_lcd();
+//    Serial.println("baca ok");
+    u8g2.clearBuffer();
+    u8g2.setFont(u8g2_font_logisoso20_tr); // choose a suitable font 42 pixel
+    u8g2.setCursor(2,52);
+    u8g2.print("READ OK");
+    u8g2.sendBuffer(); 
     delay(5000);
-    ESP.restart();   
+//    ESP.restart();  
+    service_sensor(); 
   }
 
   
@@ -109,21 +159,22 @@ void loop() {
 
 }
 
-void service_lcd(){
+void service_sensor(){
   String tempp = String(dht.readTemperature());
   char * temp = strdup(tempp.c_str());
   String humm =String(dht.readHumidity());
   char * hum = strdup(humm.c_str());
-  Serial.println("temp"+tempp);
+//  Serial.println("temp"+tempp);
   if (tempp == "nan"){
     u8g2.clearBuffer(); 
     u8g2.clearBuffer();
     u8g2.setFont(u8g2_font_logisoso20_tr); // choose a suitable font 42 pixel
-    u8g2.setCursor(2,52);
-    u8g2.print("sensor error....");
+    u8g2.setCursor(0,52);
+    u8g2.print("SENSOR ERR");
     u8g2.sendBuffer(); 
-    delay(1000);
-    ESP.restart();
+    delay(2000);
+    write_id();
+//    ESP.restart();
     
   }else{
     u8g2.clearBuffer();          
@@ -150,7 +201,76 @@ void service_lcd(){
     u8g2.print("%");
     u8g2.setCursor(92,74);
     u8g2.print(belakang_hum);
-    u8g2.sendBuffer();    
+    u8g2.sendBuffer(); 
+    delay(2000);
+    ESP.restart();   
   } 
   yield(); 
+}
+
+void write_id(){  
+  u8g2.clearBuffer(); 
+  u8g2.clearBuffer();
+  u8g2.setFont(u8g2_font_logisoso20_tr); // choose a suitable font 42 pixel
+  u8g2.setCursor(0,52);
+  u8g2.print("WRT ID");
+  u8g2.sendBuffer(); 
+  delay(2000);
+  SD.remove("id_device.txt"); 
+  delay(2000);
+  Serial.println("menulis id_device to sdcard");
+  myFile = SD.open("id_device.txt", FILE_WRITE);
+  if(myFile){  
+   Serial.print("Writing to id_device.txt...");
+   myFile.println(id_device);
+   myFile.close();
+   Serial.println("done.");
+   u8g2.clearBuffer(); 
+   u8g2.clearBuffer();
+   u8g2.setFont(u8g2_font_logisoso20_tr); // choose a suitable font 42 pixel
+   u8g2.setCursor(0,52);
+   u8g2.print("ID OK");
+   u8g2.sendBuffer(); 
+   delay(2000);
+   myFile = SD.open("id_device.txt");
+   String id_device_sdcard;
+   int count=1;
+   if(myFile){
+    while(myFile.available()){
+      id_device_sdcard = String(myFile.readStringUntil('\n'));
+      id_device_sdcard.trim();       
+      
+//      ssid      = id_device.c_str();      
+      delay(3000);  
+    }
+      myFile.close();
+      
+      
+      u8g2.setFont(u8g2_font_logisoso16_tr); // choose a suitable font 42 pixel
+      u8g2.setCursor(2,90);
+      u8g2.print(id_device.c_str());
+      u8g2.sendBuffer(); 
+
+    }else{
+      u8g2.clearBuffer();
+      u8g2.clearBuffer();
+      u8g2.setFont(u8g2_font_logisoso20_tr); // choose a suitable font 42 pixel
+      u8g2.setCursor(2,52);
+      u8g2.print("RD ID ERR");
+      u8g2.sendBuffer(); 
+      delay(2000);  
+      ESP.restart();   
+    }
+  }else{
+    Serial.println("error opening test.txt");
+    u8g2.clearBuffer(); 
+    u8g2.clearBuffer();
+    u8g2.setFont(u8g2_font_logisoso20_tr); // choose a suitable font 42 pixel
+    u8g2.setCursor(0,52);
+    u8g2.print("WRT ERR");
+    u8g2.sendBuffer(); 
+    delay(2000);
+    ESP.restart();   
+  }
+   
 }
