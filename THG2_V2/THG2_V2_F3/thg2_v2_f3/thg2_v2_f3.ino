@@ -182,7 +182,9 @@ void setup () {
 //    ESP.restart();   
   }
 /////////////////////////////////////////////////////////////////////  
-
+  WiFi.mode(WIFI_STA); // Setup ESP in client mode
+  WiFi.setSleepMode(WIFI_NONE_SLEEP);
+  
   WiFiManager wifiManager;
   wifiManager.setTimeout(60);
   wifiManager.setBreakAfterConfig(true);
@@ -252,31 +254,6 @@ void setup () {
         ESP.restart();            
       }else{ 
         sinkronisasi_waktu();     
-//        timeClient.begin();
-//        timeClient.setTimeOffset(25200);       
-//        while(!timeClient.update()) {
-//            timeClient.forceUpdate();
-//        }
-//        formattedDate = timeClient.getFormattedDate();
-//        int splitT = formattedDate.indexOf("T");
-//        dayStamp = formattedDate.substring(0, splitT);
-//        timeStamp = formattedDate.substring(splitT+1, formattedDate.length()-1);       
-//        
-//        char *tahun; 
-//        tahun = strtok((char *) dayStamp.c_str(),"-");        
-//        char *bulan = strtok(NULL,"-");
-//        char *hari = strtok(NULL,"-");
-//        char *jam;
-//        jam = strtok((char *) timeStamp.c_str(),":");
-//        char *menit = strtok(NULL,":");
-//        char *detik = strtok(NULL,":");
-//        String tahun_str = String(tahun);
-//        String bulan_str = String(bulan);
-//        String hari_str = String(hari);
-//        String jam_str = String(jam);
-//        String menit_str = String(menit);
-//        String detik_str = String(detik);      
-//        rtc.adjust(DateTime(tahun_str.toInt(), bulan_str.toInt(), hari_str.toInt(), jam_str.toInt(), menit_str.toInt(), detik_str.toInt()));
 
         String pemilik = httpPOSTRequest_pemilik();
         JSONVar var_pemilik = JSON.parse(pemilik);
@@ -357,7 +334,7 @@ void setup () {
   Thread2.onRun(acpn_mode);
   Thread2.setInterval(500);
   Thread3.onRun(service_control);
-  Thread3.setInterval(180000);
+  Thread3.setInterval(5000);
   Thread4.onRun(service_lcd);
   Thread4.setInterval(10000);
   
@@ -388,7 +365,7 @@ void service(){
           float temperature = getTemp();
           float h = 00;
 
-          if(String(temperature) == "-127"){
+          if(temperature <= (-50)){
             service();
           }else{
             while(!timeClient.update()){
@@ -412,7 +389,10 @@ void service(){
       }  
     } 
   }else{   
+    Serial.println("error service not connected");
     tulis_sd_card();  
+    delay(2000);
+    ESP.restart(); 
   }
   yield();
 }
@@ -485,7 +465,7 @@ void service_control(){
             ESP.restart();             
           }else{        
           }
-          sinkronisasi_waktu();
+          
       }else{ 
         Serial.println("ada data yg kosong");       
       }    
@@ -508,7 +488,7 @@ void service_lcd(){
   char * depan_temp = strtok(temp,".");
   char * belakang_temp = strtok(NULL,".");
 
-  if(String(temppp) == "-127"){
+  if(temppp <= (-50)){
     Serial.println("non lcd = "+tempp);
   }else{
 //    Serial.println("lcd = "+tempp);
@@ -529,6 +509,16 @@ void service_lcd(){
     u8g2.setFont(u8g2_font_logisoso20_tr);
     u8g2.setCursor(20,97);
     u8g2.print("otori.id");
+
+    if(WiFi.status() == WL_CONNECTED){
+      u8g2.setFont(u8g2_font_logisoso20_tr);
+      u8g2.setCursor(0,97);
+      u8g2.print("..");
+    }else if (WiFi.status() != WL_CONNECTED){   
+      u8g2.setFont(u8g2_font_logisoso20_tr);
+      u8g2.setCursor(0,97);
+      u8g2.print(".");
+    }
   
     u8g2.sendBuffer(); 
   }
@@ -622,7 +612,7 @@ String httpPOSTRequest_adjustment_rh_temp(){
     String error = "error request";
     http.end();     
   }
-  http.end(); 
+//  http.end(); 
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////
 String httpPOSTRequest_post_data(String data){
@@ -641,7 +631,8 @@ String httpPOSTRequest_post_data(String data){
 //  Serial.println(payload); 
   if (body==200){
     Serial.println("ini data post api = "+data);
-    http.end();  
+    http.end();
+    sinkronisasi_waktu();  
     return payload; 
   }
   else {
@@ -652,10 +643,42 @@ String httpPOSTRequest_post_data(String data){
     delay(1000);
     ESP.restart();   
   }
-  http.end();
+//  http.end();
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////
-
+////////////////////////////////////////////////////////////////////////////////////////////////
+String httpPOSTRequest_post_data_sd(String data){
+  HTTPClient http;
+  
+  http.begin(post_data);
+  
+  http.addHeader("Content-Type", "application/json");
+  String params = "{\"id\":\""+id_device+"\",\"data\":\""+String(data)+"\"}";
+  Serial.println(params);
+  int body = http.POST(params);
+  String payload = http.getString();
+  
+  Serial.print("HTTP Response code post data sd: ");
+  Serial.println(body);
+  
+//  Serial.print("HTTP Response data post data: ");
+//  Serial.println(payload); 
+  if (body==200){
+    Serial.println("ini data sd post api = "+data);
+    http.end();  
+    indicator_api_200 = "1";
+    return payload; 
+  }
+  else {
+    String error = "error request";
+    http.end();
+    Serial.println("error hit");
+    indicator_api_200 = "0";
+//    tulis_sd_card();      
+  }
+//  http.end();
+}
+////////////////////////////////////////////////////////////////////////////////////////////////
 void tulis_sd_card(){
   float h = 00;
   float t = getTemp()+00;  
@@ -735,13 +758,17 @@ void cek_data_sdcard_and_send_to_firebase(){
           data = String(myFile.readStringUntil('\n'));
           data.trim();
           Serial.println(data);
-          httpPOSTRequest_post_data(data);    
-          delay(3000);      
+          httpPOSTRequest_post_data_sd(data);  
+          delay(1000);      
         }
         
         myFile.close();
-        SD.remove("log.txt"); 
-        Serial.println("remove log.txt");    
+        if(indicator_api_200 == "1"){
+          SD.remove("log.txt"); 
+          Serial.println("remove log.txt");
+        }else{
+          Serial.println("NOT remove log.txt");
+        }    
         
       }else{
         u8g2.clearBuffer();

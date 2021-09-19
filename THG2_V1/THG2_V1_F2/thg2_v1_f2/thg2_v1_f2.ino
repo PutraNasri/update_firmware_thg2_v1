@@ -15,7 +15,7 @@
 #include <WiFiClient.h>
 #include <Arduino_JSON.h>
 #include <WiFiManager.h>
-//#include "DHTesp.h"
+#include "DHTesp.h"
 //#include <SPI.h>
 #include <SD.h>
 //DHTesp dht;
@@ -180,6 +180,9 @@ void setup () {
 //    ESP.restart();   
   }
 /////////////////////////////////////////////////////////////////////  
+  WiFi.mode(WIFI_STA); // Setup ESP in client mode
+  WiFi.setSleepMode(WIFI_NONE_SLEEP);
+//  WiFi.begin("VISITOR","tamutimah" );
 
   WiFiManager wifiManager;
   wifiManager.setTimeout(60);
@@ -250,32 +253,7 @@ void setup () {
         ESP.restart();            
       }else{ 
         sinkronisasi_waktu();     
-//        timeClient.begin();
-//        timeClient.setTimeOffset(25200);       
-//        while(!timeClient.update()) {
-//            timeClient.forceUpdate();
-//        }
-//        formattedDate = timeClient.getFormattedDate();
-//        int splitT = formattedDate.indexOf("T");
-//        dayStamp = formattedDate.substring(0, splitT);
-//        timeStamp = formattedDate.substring(splitT+1, formattedDate.length()-1);       
-//        
-//        char *tahun; 
-//        tahun = strtok((char *) dayStamp.c_str(),"-");        
-//        char *bulan = strtok(NULL,"-");
-//        char *hari = strtok(NULL,"-");
-//        char *jam;
-//        jam = strtok((char *) timeStamp.c_str(),":");
-//        char *menit = strtok(NULL,":");
-//        char *detik = strtok(NULL,":");
-//        String tahun_str = String(tahun);
-//        String bulan_str = String(bulan);
-//        String hari_str = String(hari);
-//        String jam_str = String(jam);
-//        String menit_str = String(menit);
-//        String detik_str = String(detik);      
-//        rtc.adjust(DateTime(tahun_str.toInt(), bulan_str.toInt(), hari_str.toInt(), jam_str.toInt(), menit_str.toInt(), detik_str.toInt()));
-
+        
         String pemilik = httpPOSTRequest_pemilik();
         JSONVar var_pemilik = JSON.parse(pemilik);
         pemilik = var_pemilik["pemilik"];       
@@ -355,19 +333,24 @@ void setup () {
   Thread2.onRun(acpn_mode);
   Thread2.setInterval(500);
   Thread3.onRun(service_control);
-  Thread3.setInterval(180000);
+  Thread3.setInterval(5000);
+//  Thread3.setInterval(180000);
   Thread4.onRun(service_lcd);
   Thread4.setInterval(10000);
   
   delay(2000);
 //  cek_data_sdcard_and_send_to_firebase();
 //  service();
+
+//  cek_data_sdcard_and_send_to_firebase();
+  
 }
 
 
 void service(){
+  delay(2000);
   if(WiFi.status() == WL_CONNECTED){  
-//    delay(2000);   
+    delay(1000);   
     String pemilik_ping = httpPOSTRequest_pemilik();
     JSONVar var_pemilik_ping = JSON.parse(pemilik_ping);
     pemilik_ping = var_pemilik_ping["pemilik"];
@@ -377,13 +360,13 @@ void service(){
       Serial.println("ping pemilik gagal");
       tulis_sd_card();
       delay(1000);
-//      ESP.restart(); 
+ 
     }else{    
       if(pemilik != ""){
         cek_data_sdcard_and_send_to_firebase();
         if(pemilik != "no_id_user" && pemilik != "lock"){
           sts_server = "1";
-          cek_data_sdcard_and_send_to_firebase();
+
           float h = dht.readHumidity();
           float t = dht.readTemperature();
 
@@ -408,6 +391,7 @@ void service(){
             timeStamp = formattedDate.substring(splitT+1, formattedDate.length()-1);
             String data = String(t+temp_call)+"@"+String(h+rh_call)+"@"+String(dayStamp)+"@"+String(timeStamp);
             httpPOSTRequest_post_data(data); 
+//            tulis_sd_card(); 
           }     
            
         }else if(pemilik=="no_id_user"){
@@ -420,7 +404,10 @@ void service(){
       }  
     } 
   }else{   
-    tulis_sd_card();  
+    Serial.println("error service not connected");
+    tulis_sd_card(); 
+    delay(2000);
+    ESP.restart(); 
   }
   yield();
 }
@@ -493,7 +480,7 @@ void service_control(){
             ESP.restart();             
           }else{        
           }
-          sinkronisasi_waktu();
+          
       }else{ 
         Serial.println("ada data yg kosong");       
       }    
@@ -507,7 +494,10 @@ void service_control(){
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 void service_lcd(){
   delay(2000);
+//  String temppp = String(dht.readTemperature());
   String tempp = String(dht.readTemperature()+temp_call);
+//  Serial.println(temppp);
+//  Serial.println(temp_call);
   char * temp = strdup(tempp.c_str());
   String humm =String(dht.readHumidity()+rh_call);
   char * hum = strdup(humm.c_str());
@@ -572,7 +562,7 @@ String httpPOSTRequest_pemilik(){
   else {
     http.end(); 
   }
-  http.end();
+//  http.end();
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////
 String httpPOSTRequest_delay(){
@@ -594,7 +584,7 @@ String httpPOSTRequest_delay(){
   else {
     http.end();   
   }
-  http.end();
+//  http.end();
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////
 String httpPOSTRequest_adjustment_rh_temp(){
@@ -617,7 +607,7 @@ String httpPOSTRequest_adjustment_rh_temp(){
     String error = "error request";
     http.end();     
   }
-  http.end(); 
+//  http.end(); 
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////
 String httpPOSTRequest_post_data(String data){
@@ -636,49 +626,52 @@ String httpPOSTRequest_post_data(String data){
 //  Serial.println(payload); 
   if (body==200){
     Serial.println("ini data post api = "+data);
-    http.end();  
+    http.end(); 
+    sinkronisasi_waktu(); 
     return payload; 
   }
   else {
     String error = "error request";
     http.end();
     Serial.println("error hit");
-    tulis_sd_card(); 
+    tulis_sd_card();
     delay(1000);
     ESP.restart();   
   }
-  http.end();
+//  http.end();
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
 String httpPOSTRequest_post_data_sd(String data){
   HTTPClient http;
+  
   http.begin(post_data);
+  
   http.addHeader("Content-Type", "application/json");
   String params = "{\"id\":\""+id_device+"\",\"data\":\""+String(data)+"\"}";
   Serial.println(params);
   int body = http.POST(params);
   String payload = http.getString();
   
-//  Serial.print("HTTP Response code post data: ");
-//  Serial.println(body);
+  Serial.print("HTTP Response code post data sd: ");
+  Serial.println(body);
   
 //  Serial.print("HTTP Response data post data: ");
 //  Serial.println(payload); 
   if (body==200){
-    Serial.println("ini data post api = "+data);
+    Serial.println("ini data sd post api = "+data);
     http.end();  
-    indicator_api_200 = "200";
+    indicator_api_200 = "1";
     return payload; 
   }
   else {
     String error = "error request";
     http.end();
     Serial.println("error hit");
-    tulis_sd_card();   
     indicator_api_200 = "0";
+//    tulis_sd_card();      
   }
-  http.end();
+//  http.end();
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -773,18 +766,23 @@ void cek_data_sdcard_and_send_to_firebase(){
       myFile = SD.open("log.txt");
       String data;
       int count =1;
-      if(myFile){    
+      if(myFile){
         while(myFile.available()){
           data = String(myFile.readStringUntil('\n'));
           data.trim();
           Serial.println(data);
-          httpPOSTRequest_post_data(data);    
-          delay(3000);      
+          httpPOSTRequest_post_data_sd(data);  
+          delay(1000);      
         }
         
         myFile.close();
-        SD.remove("log.txt"); 
-        Serial.println("remove log.txt");    
+        if(indicator_api_200 == "1"){
+          SD.remove("log.txt"); 
+          Serial.println("remove log.txt");
+        }else{
+          Serial.println("NOT remove log.txt");
+        }
+            
         
       }else{
         u8g2.clearBuffer();

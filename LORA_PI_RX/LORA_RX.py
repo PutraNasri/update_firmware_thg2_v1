@@ -10,7 +10,6 @@ import requests
 import sys
 import os
 
-
 led_1 = 5
 led_2 = 6
 led_3 = 13
